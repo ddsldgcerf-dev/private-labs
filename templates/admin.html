@@ -1,1 +1,338 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>الجدول المركزي</title><style>body{font-family:Arial;background:#f4f6f8;padding:20px}.card{background:#fff;padding:20px;border-radius:12px}table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #ddd;padding:7px;vertical-align:top}th{background:#eee}.export{display:inline-block;background:#146c43;color:white;padding:10px 16px;border-radius:7px;text-decoration:none;margin-bottom:15px}</style></head><body><div class="card"><h1>الجدول المركزي — خاص</h1><a class="export" href="/admin/export?password={{request.query_params.get('password','')}}">تصدير Excel</a><table><tr><th>المديرية الجهوية</th><th>المديرية الولائية</th><th>اسم المخبر</th><th>السجل التجاري</th><th>رخصة الاستغلال</th><th>تاريخ الرخصة</th><th>العنوان</th><th>صاحب الرخصة</th><th>المدير التقني</th><th>الوضعية</th><th>الفيزيوكيميائية</th><th>الميكروبيولوجية</th><th>آخر تفتيش</th><th>ملاحظات</th></tr>{% for r in labs %}<tr><td>{{r.region}}</td><td>{{r.wilaya}}</td><td>{{r.name}}</td><td>{{r.rc}}</td><td>{{r.license_no}}</td><td>{{r.license_date}}</td><td>{{r.address}}</td><td>{{r.owner}}</td><td>{{r.technical_manager}}</td><td>{{r.status}}</td><td>{{r.physico_chemical}}</td><td>{{r.microbiological}}</td><td>{{r.last_inspection}}</td><td>{{r.notes}}</td></tr>{% endfor %}</table></div></body></html>
+<!doctype html>
+<html lang="ar" dir="rtl">
+
+<head>
+
+<meta charset="utf-8">
+
+<meta name="viewport"
+      content="width=device-width,initial-scale=1">
+
+<title>قاعدة بيانات المخابر</title>
+
+<style>
+
+body{
+    font-family:Arial,sans-serif;
+    background:#f4f6f8;
+    margin:0;
+    padding:20px;
+    color:#222;
+}
+
+.container{
+    max-width:1500px;
+    margin:auto;
+}
+
+.card{
+    background:#fff;
+    padding:22px;
+    border-radius:16px;
+    box-shadow:0 3px 15px #0001;
+    margin-bottom:20px;
+}
+
+.header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:15px;
+    flex-wrap:wrap;
+}
+
+.title{
+    margin:0;
+}
+
+.subtitle{
+    color:#666;
+    margin-top:7px;
+}
+
+.counter{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    background:#146c43;
+    color:white;
+    padding:10px 18px;
+    border-radius:10px;
+    font-weight:bold;
+}
+
+.actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:20px;
+}
+
+.button{
+    display:inline-block;
+    text-decoration:none;
+    border:0;
+    padding:10px 16px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:14px;
+}
+
+.export{
+    background:#146c43;
+    color:white;
+}
+
+.logout{
+    background:#555;
+    color:white;
+}
+
+.delete{
+    background:#b3261e;
+    color:white;
+}
+
+table{
+    border-collapse:collapse;
+    width:100%;
+    font-size:12px;
+    min-width:1300px;
+}
+
+.table-wrap{
+    overflow-x:auto;
+}
+
+th,
+td{
+    border:1px solid #ddd;
+    padding:8px;
+    vertical-align:top;
+}
+
+th{
+    background:#eef1f3;
+    white-space:nowrap;
+}
+
+.delete-form{
+    margin:0;
+}
+
+.empty{
+    text-align:center;
+    padding:30px;
+    color:#777;
+}
+
+@media(max-width:700px){
+
+    body{
+        padding:10px;
+    }
+
+    .card{
+        padding:15px;
+    }
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="card">
+
+<div class="header">
+
+<div>
+
+<h1 class="title">
+
+{% if user.role == "admin" %}
+الجدول المركزي
+{% elif user.role == "region" %}
+قاعدة بيانات المديرية الجهوية — {{ user.name }}
+{% else %}
+قاعدة بيانات المديرية الولائية — {{ user.name }}
+{% endif %}
+
+</h1>
+
+<div class="subtitle">
+
+المستخدم:
+{% if user.role == "admin" %}
+الإدارة المركزية
+{% elif user.role == "region" %}
+المديرية الجهوية
+{% else %}
+المديرية الولائية
+{% endif %}
+
+</div>
+
+</div>
+
+<div class="counter">
+
+عدد المخابر:
+{{ count }}
+
+</div>
+
+</div>
+
+
+<div class="actions">
+
+<a
+    class="button export"
+    href="/admin/export"
+>
+تصدير Excel
+</a>
+
+<a
+    class="button logout"
+    href="/logout"
+>
+تسجيل الخروج
+</a>
+
+</div>
+
+</div>
+
+
+<div class="card">
+
+<div class="table-wrap">
+
+{% if labs %}
+
+<table>
+
+<tr>
+
+<th>المديرية الجهوية</th>
+
+<th>المديرية الولائية</th>
+
+<th>اسم المخبر</th>
+
+<th>السجل التجاري</th>
+
+<th>رخصة الاستغلال</th>
+
+<th>تاريخ الرخصة</th>
+
+<th>العنوان</th>
+
+<th>صاحب الرخصة</th>
+
+<th>المدير التقني</th>
+
+<th>الوضعية</th>
+
+<th>الفيزيوكيميائية</th>
+
+<th>الميكروبيولوجية</th>
+
+<th>آخر تفتيش</th>
+
+<th>ملاحظات</th>
+
+{% if user.role == "admin" %}
+<th>إجراء</th>
+{% endif %}
+
+</tr>
+
+
+{% for r in labs %}
+
+<tr>
+
+<td>{{ r.region }}</td>
+
+<td>{{ r.wilaya }}</td>
+
+<td>{{ r.name }}</td>
+
+<td>{{ r.rc }}</td>
+
+<td>{{ r.license_no }}</td>
+
+<td>{{ r.license_date }}</td>
+
+<td>{{ r.address }}</td>
+
+<td>{{ r.owner }}</td>
+
+<td>{{ r.technical_manager }}</td>
+
+<td>{{ r.status }}</td>
+
+<td>{{ r.physico_chemical }}</td>
+
+<td>{{ r.microbiological }}</td>
+
+<td>{{ r.last_inspection }}</td>
+
+<td>{{ r.notes }}</td>
+
+{% if user.role == "admin" %}
+
+<td>
+
+<form
+    class="delete-form"
+    method="post"
+    action="/admin/delete/{{ r.id }}"
+    onsubmit="return confirm('هل أنت متأكد من حذف هذا المخبر؟');"
+>
+
+<button
+    type="submit"
+    class="button delete"
+>
+حذف
+</button>
+
+</form>
+
+</td>
+
+{% endif %}
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+{% else %}
+
+<div class="empty">
+
+لا توجد بيانات مخابر مسجلة حاليًا.
+
+</div>
+
+{% endif %}
+
+</div>
+
+</div>
+
+</div>
+
+</body>
+
+</html>
