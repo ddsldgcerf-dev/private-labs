@@ -12,6 +12,10 @@
 
 <style>
 
+*{
+    box-sizing:border-box;
+}
+
 body{
     font-family:Arial,sans-serif;
     background:#f4f6f8;
@@ -21,7 +25,7 @@ body{
 }
 
 .container{
-    max-width:1500px;
+    max-width:1600px;
     margin:auto;
 }
 
@@ -56,9 +60,14 @@ body{
     gap:8px;
     background:#146c43;
     color:white;
-    padding:10px 18px;
+    padding:11px 20px;
     border-radius:10px;
     font-weight:bold;
+    font-size:16px;
+}
+
+.counter-number{
+    font-size:22px;
 }
 
 .actions{
@@ -93,15 +102,102 @@ body{
     color:white;
 }
 
+.primary{
+    background:#146c43;
+    color:white;
+}
+
+.secondary{
+    background:#6c757d;
+    color:white;
+}
+
+.warning{
+    background:#c58a00;
+    color:white;
+}
+
+.danger{
+    background:#b3261e;
+    color:white;
+}
+
+
+/* =========================
+   FILTERS
+========================= */
+
+.filter-title{
+    margin-top:0;
+    margin-bottom:15px;
+}
+
+.filters{
+    display:grid;
+    grid-template-columns:
+        repeat(5,minmax(150px,1fr));
+    gap:12px;
+}
+
+.field{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+}
+
+.field label{
+    font-size:13px;
+    font-weight:bold;
+}
+
+.field input,
+.field select{
+    width:100%;
+    padding:10px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    background:#fff;
+    font-size:14px;
+}
+
+.filter-actions{
+    display:flex;
+    gap:10px;
+    align-items:end;
+    flex-wrap:wrap;
+}
+
+.filter-button{
+    background:#146c43;
+    color:#fff;
+    border:0;
+    padding:10px 18px;
+    border-radius:8px;
+    cursor:pointer;
+}
+
+.reset-button{
+    background:#777;
+    color:#fff;
+    text-decoration:none;
+    padding:10px 18px;
+    border-radius:8px;
+}
+
+
+/* =========================
+   TABLE
+========================= */
+
+.table-wrap{
+    overflow-x:auto;
+}
+
 table{
     border-collapse:collapse;
     width:100%;
     font-size:12px;
-    min-width:1300px;
-}
-
-.table-wrap{
-    overflow-x:auto;
+    min-width:1600px;
 }
 
 th,
@@ -116,14 +212,105 @@ th{
     white-space:nowrap;
 }
 
-.delete-form{
-    margin:0;
+tr:hover td{
+    background:#fafafa;
 }
 
 .empty{
     text-align:center;
     padding:30px;
     color:#777;
+}
+
+
+/* =========================
+   ACCOUNT MANAGEMENT
+========================= */
+
+.section-title{
+    margin-top:0;
+    margin-bottom:18px;
+}
+
+.account-form{
+    display:grid;
+    grid-template-columns:
+        repeat(5,minmax(140px,1fr));
+    gap:12px;
+    align-items:end;
+}
+
+.account-form .full{
+    grid-column:1/-1;
+}
+
+.account-form input,
+.account-form select{
+    width:100%;
+    padding:10px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    font-size:14px;
+}
+
+.account-help{
+    color:#777;
+    font-size:12px;
+    margin-top:5px;
+}
+
+.accounts-table{
+    margin-top:20px;
+}
+
+.accounts-table table{
+    min-width:900px;
+}
+
+.badge{
+    display:inline-block;
+    padding:5px 9px;
+    border-radius:20px;
+    font-size:12px;
+}
+
+.badge-active{
+    background:#d8f3df;
+    color:#146c43;
+}
+
+.badge-disabled{
+    background:#f5d6d6;
+    color:#a21b1b;
+}
+
+.inline-form{
+    display:inline-block;
+    margin:2px;
+}
+
+.small-button{
+    padding:7px 10px;
+    font-size:12px;
+}
+
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media(max-width:1100px){
+
+    .filters{
+        grid-template-columns:
+            repeat(2,minmax(150px,1fr));
+    }
+
+    .account-form{
+        grid-template-columns:
+            repeat(2,minmax(150px,1fr));
+    }
+
 }
 
 @media(max-width:700px){
@@ -136,15 +323,29 @@ th{
         padding:15px;
     }
 
+    .filters{
+        grid-template-columns:1fr;
+    }
+
+    .account-form{
+        grid-template-columns:1fr;
+    }
+
 }
 
 </style>
 
 </head>
 
+
 <body>
 
 <div class="container">
+
+
+<!-- =====================================================
+     HEADER
+===================================================== -->
 
 <div class="card">
 
@@ -157,32 +358,35 @@ th{
 {% if user.role == "admin" %}
 الجدول المركزي
 {% elif user.role == "region" %}
-قاعدة بيانات المديرية الجهوية — {{ user.name }}
+قاعدة بيانات المديرية الجهوية — {{ user.region }}
 {% else %}
-قاعدة بيانات المديرية الولائية — {{ user.name }}
+قاعدة بيانات المديرية الولائية — {{ user.wilaya }}
 {% endif %}
 
 </h1>
 
 <div class="subtitle">
 
-المستخدم:
 {% if user.role == "admin" %}
 الإدارة المركزية
 {% elif user.role == "region" %}
-المديرية الجهوية
+المديرية الجهوية: {{ user.region }}
 {% else %}
-المديرية الولائية
+المديرية الولائية: {{ user.wilaya }}
 {% endif %}
 
 </div>
 
 </div>
 
+
 <div class="counter">
 
-عدد المخابر:
+<span>عدد المخابر:</span>
+
+<span class="counter-number">
 {{ count }}
+</span>
 
 </div>
 
@@ -193,7 +397,7 @@ th{
 
 <a
     class="button export"
-    href="/admin/export"
+    href="/admin/export{% if selected_region or selected_wilaya or selected_activity or selected_products or selected_search %}?region={{ selected_region|urlencode }}&wilaya={{ selected_wilaya|urlencode }}&activity={{ selected_activity|urlencode }}&products={{ selected_products|urlencode }}&search={{ selected_search|urlencode }}{% endif %}"
 >
 تصدير Excel
 </a>
@@ -210,13 +414,199 @@ th{
 </div>
 
 
+<!-- =====================================================
+     FILTERS
+===================================================== -->
+
 <div class="card">
+
+<h2 class="filter-title">
+فلترة قاعدة البيانات
+</h2>
+
+<form method="get" action="/admin">
+
+<div class="filters">
+
+
+<div class="field">
+
+<label>
+المديرية الجهوية
+</label>
+
+<select
+    name="region"
+    id="region"
+    onchange="filterWilayas()"
+>
+
+<option value="">
+الكل
+</option>
+
+{% for region in available_regions %}
+
+<option
+    value="{{ region }}"
+    {% if selected_region == region %}selected{% endif %}
+>
+{{ region }}
+</option>
+
+{% endfor %}
+
+</select>
+
+</div>
+
+
+<div class="field">
+
+<label>
+المديرية الولائية
+</label>
+
+<select
+    name="wilaya"
+    id="wilaya"
+>
+
+<option value="">
+الكل
+</option>
+
+{% for wilaya in available_wilayas %}
+
+<option
+    value="{{ wilaya }}"
+    {% if selected_wilaya == wilaya %}selected{% endif %}
+>
+{{ wilaya }}
+</option>
+
+{% endfor %}
+
+</select>
+
+</div>
+
+
+<div class="field">
+
+<label>
+اختصاص النشاط
+</label>
+
+<select name="activity">
+
+<option value="">
+الكل
+</option>
+
+{% for value in activity_values %}
+
+<option
+    value="{{ value }}"
+    {% if selected_activity == value %}selected{% endif %}
+>
+{{ value }}
+</option>
+
+{% endfor %}
+
+</select>
+
+</div>
+
+
+<div class="field">
+
+<label>
+عائلات المنتوجات
+</label>
+
+<select name="products">
+
+<option value="">
+الكل
+</option>
+
+{% for value in product_values %}
+
+<option
+    value="{{ value }}"
+    {% if selected_products == value %}selected{% endif %}
+>
+{{ value }}
+</option>
+
+{% endfor %}
+
+</select>
+
+</div>
+
+
+<div class="field">
+
+<label>
+بحث
+</label>
+
+<input
+    type="text"
+    name="search"
+    value="{{ selected_search }}"
+    placeholder="اسم المخبر، المالك، السجل..."
+>
+
+</div>
+
+
+</div>
+
+
+<div class="filter-actions">
+
+<button
+    type="submit"
+    class="filter-button"
+>
+تطبيق الفلترة
+</button>
+
+<a
+    href="/admin"
+    class="reset-button"
+>
+إلغاء الفلترة
+</a>
+
+</div>
+
+</form>
+
+</div>
+
+
+<!-- =====================================================
+     CENTRAL TABLE
+===================================================== -->
+
+<div class="card">
+
+<h2 class="section-title">
+قاعدة البيانات المركزية
+</h2>
 
 <div class="table-wrap">
 
-{% if labs %}
+{% if rows %}
 
 <table>
+
+<thead>
 
 <tr>
 
@@ -240,6 +630,10 @@ th{
 
 <th>الوضعية</th>
 
+<th>اختصاص النشاط</th>
+
+<th>عائلات المنتوجات</th>
+
 <th>الفيزيوكيميائية</th>
 
 <th>الميكروبيولوجية</th>
@@ -248,14 +642,16 @@ th{
 
 <th>ملاحظات</th>
 
-{% if user.role == "admin" %}
 <th>إجراء</th>
-{% endif %}
 
 </tr>
 
+</thead>
 
-{% for r in labs %}
+
+<tbody>
+
+{% for r in rows %}
 
 <tr>
 
@@ -279,6 +675,10 @@ th{
 
 <td>{{ r.status }}</td>
 
+<td>{{ r.activity_specialty }}</td>
+
+<td>{{ r.product_families }}</td>
+
 <td>{{ r.physico_chemical }}</td>
 
 <td>{{ r.microbiological }}</td>
@@ -287,14 +687,13 @@ th{
 
 <td>{{ r.notes }}</td>
 
-{% if user.role == "admin" %}
 
 <td>
 
 <form
     class="delete-form"
     method="post"
-    action="/admin/delete/{{ r.id }}"
+    action="/admin/labs/{{ r.id }}"
     onsubmit="return confirm('هل أنت متأكد من حذف هذا المخبر؟');"
 >
 
@@ -309,11 +708,11 @@ th{
 
 </td>
 
-{% endif %}
-
 </tr>
 
 {% endfor %}
+
+</tbody>
 
 </table>
 
@@ -321,7 +720,7 @@ th{
 
 <div class="empty">
 
-لا توجد بيانات مخابر مسجلة حاليًا.
+لا توجد بيانات مخابر مطابقة للفلاتر الحالية.
 
 </div>
 
@@ -331,7 +730,511 @@ th{
 
 </div>
 
+
+<!-- =====================================================
+     ACCOUNT MANAGEMENT - ADMIN ONLY
+===================================================== -->
+
+{% if user.role == "admin" %}
+
+<div class="card">
+
+<h2 class="section-title">
+إدارة حسابات المديريات
+</h2>
+
+<form
+    method="post"
+    action="/admin/accounts/add"
+>
+
+<div class="account-form">
+
+
+<div class="field">
+
+<label>
+اسم المستخدم
+</label>
+
+<input
+    type="text"
+    name="username"
+    required
+    placeholder="مثال: tipaza"
+>
+
 </div>
+
+
+<div class="field">
+
+<label>
+كلمة المرور
+</label>
+
+<input
+    type="password"
+    name="password"
+    required
+    minlength="6"
+    placeholder="6 أحرف على الأقل"
+>
+
+</div>
+
+
+<div class="field">
+
+<label>
+نوع الحساب
+</label>
+
+<select
+    name="role"
+    id="accountRole"
+    onchange="toggleAccountFields()"
+    required
+>
+
+<option value="">
+اختر نوع الحساب
+</option>
+
+<option value="region">
+مديرية جهوية
+</option>
+
+<option value="wilaya">
+مديرية ولائية
+</option>
+
+</select>
+
+</div>
+
+
+<div class="field">
+
+<label>
+المديرية الجهوية
+</label>
+
+<select
+    name="region"
+    id="accountRegion"
+>
+
+<option value="">
+اختر المديرية الجهوية
+</option>
+
+{% for region in REGIONS %}
+
+<option value="{{ region }}">
+{{ region }}
+</option>
+
+{% endfor %}
+
+</select>
+
+</div>
+
+
+<div class="field">
+
+<label>
+المديرية الولائية
+</label>
+
+<select
+    name="wilaya"
+    id="accountWilaya"
+>
+
+<option value="">
+اختر المديرية الولائية
+</option>
+
+{% for wilaya in available_wilayas %}
+
+<option value="{{ wilaya }}">
+{{ wilaya }}
+</option>
+
+{% endfor %}
+
+</select>
+
+</div>
+
+
+<div class="full">
+
+<button
+    type="submit"
+    class="button primary"
+>
+إضافة الحساب
+</button>
+
+</div>
+
+</div>
+
+</form>
+
+
+<div class="account-help">
+
+حساب المديرية الجهوية يرى فقط المخابر التابعة للمديريات الولائية الواقعة ضمن اختصاصه، بينما حساب المديرية الولائية يرى بيانات ولايته فقط.
+
+</div>
+
+
+<div class="accounts-table">
+
+<h3>
+الحسابات الحالية
+</h3>
+
+<div id="accountsContainer">
+
+<div class="empty">
+جاري تحميل الحسابات...
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+{% endif %}
+
+
+</div>
+
+
+<script>
+
+/* =====================================================
+   ACCOUNT FIELDS
+===================================================== */
+
+function toggleAccountFields(){
+
+    const role =
+        document.getElementById("accountRole").value;
+
+    const region =
+        document.getElementById("accountRegion");
+
+    const wilaya =
+        document.getElementById("accountWilaya");
+
+    if(role === "region"){
+
+        region.disabled = false;
+        region.required = true;
+
+        wilaya.disabled = true;
+        wilaya.required = false;
+        wilaya.value = "";
+
+    }
+
+    else if(role === "wilaya"){
+
+        region.disabled = true;
+        region.required = false;
+        region.value = "";
+
+        wilaya.disabled = false;
+        wilaya.required = true;
+
+    }
+
+    else{
+
+        region.disabled = true;
+        wilaya.disabled = true;
+
+        region.required = false;
+        wilaya.required = false;
+
+    }
+
+}
+
+
+/* =====================================================
+   WILAYA FILTER
+===================================================== */
+
+function filterWilayas(){
+
+    /*
+       الفلترة الحقيقية تتم في الخادم.
+       هذه الوظيفة فقط تمنع اختيار ولاية
+       غير موجودة ضمن القائمة الحالية.
+    */
+
+    const region =
+        document.getElementById("region").value;
+
+    const wilaya =
+        document.getElementById("wilaya");
+
+    if(!region){
+        return;
+    }
+
+}
+
+
+/* =====================================================
+   LOAD ACCOUNTS
+===================================================== */
+
+async function loadAccounts(){
+
+    const container =
+        document.getElementById("accountsContainer");
+
+    if(!container){
+        return;
+    }
+
+    try{
+
+        const response =
+            await fetch("/admin/accounts");
+
+        if(!response.ok){
+            throw new Error("Unauthorized");
+        }
+
+        const data =
+            await response.json();
+
+        if(!data.accounts ||
+           data.accounts.length === 0){
+
+            container.innerHTML =
+                '<div class="empty">لا توجد حسابات مضافة حاليًا.</div>';
+
+            return;
+        }
+
+
+        let html = `
+
+        <div class="table-wrap">
+
+        <table>
+
+        <thead>
+
+        <tr>
+
+        <th>اسم المستخدم</th>
+
+        <th>نوع الحساب</th>
+
+        <th>المديرية الجهوية</th>
+
+        <th>المديرية الولائية</th>
+
+        <th>الحالة</th>
+
+        <th>تغيير كلمة المرور</th>
+
+        <th>الحالة</th>
+
+        <th>حذف</th>
+
+        </tr>
+
+        </thead>
+
+        <tbody>
+        `;
+
+
+        data.accounts.forEach(account => {
+
+            let roleText =
+                account.role === "region"
+                ? "مديرية جهوية"
+                : "مديرية ولائية";
+
+            let status =
+                account.active
+                ? '<span class="badge badge-active">نشط</span>'
+                : '<span class="badge badge-disabled">معطل</span>';
+
+
+            html += `
+
+            <tr>
+
+            <td>${escapeHtml(account.username)}</td>
+
+            <td>${roleText}</td>
+
+            <td>${escapeHtml(account.region || "-")}</td>
+
+            <td>${escapeHtml(account.wilaya || "-")}</td>
+
+            <td>${status}</td>
+
+            <td>
+
+            <form
+                class="inline-form"
+                method="post"
+                action="/admin/accounts/${account.id}/password"
+                onsubmit="return changePasswordConfirm();"
+            >
+
+            <input
+                type="password"
+                name="password"
+                minlength="6"
+                required
+                placeholder="كلمة جديدة"
+                style="padding:7px;width:130px;border:1px solid #ccc;border-radius:7px;"
+            >
+
+            <button
+                type="submit"
+                class="button primary small-button"
+            >
+            تغيير
+            </button>
+
+            </form>
+
+            </td>
+
+
+            <td>
+
+            <form
+                class="inline-form"
+                method="post"
+                action="/admin/accounts/${account.id}/toggle"
+            >
+
+            <button
+                type="submit"
+                class="button ${account.active ? "warning" : "primary"} small-button"
+            >
+            ${account.active ? "تعطيل" : "تفعيل"}
+            </button>
+
+            </form>
+
+            </td>
+
+
+            <td>
+
+            <form
+                class="inline-form"
+                method="post"
+                action="/admin/accounts/${account.id}/delete"
+                onsubmit="return confirm('هل أنت متأكد من حذف هذا الحساب؟');"
+            >
+
+            <button
+                type="submit"
+                class="button delete small-button"
+            >
+            حذف
+            </button>
+
+            </form>
+
+            </td>
+
+            </tr>
+
+            `;
+
+        });
+
+
+        html += `
+
+        </tbody>
+
+        </table>
+
+        </div>
+
+        `;
+
+        container.innerHTML = html;
+
+    }
+
+    catch(error){
+
+        container.innerHTML =
+            '<div class="empty">تعذر تحميل قائمة الحسابات.</div>';
+
+    }
+
+}
+
+
+/* =====================================================
+   SECURITY / HTML ESCAPE
+===================================================== */
+
+function escapeHtml(value){
+
+    return String(value ?? "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+}
+
+
+/* =====================================================
+   PASSWORD CONFIRMATION
+===================================================== */
+
+function changePasswordConfirm(){
+
+    return confirm(
+        "هل تريد تغيير كلمة مرور هذا الحساب؟"
+    );
+
+}
+
+
+/* =====================================================
+   START
+===================================================== */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function(){
+
+        toggleAccountFields();
+
+        loadAccounts();
+
+    }
+);
+
+</script>
 
 </body>
 
