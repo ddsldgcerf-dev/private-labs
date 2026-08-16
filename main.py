@@ -1,16 +1,24 @@
 from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from starlette.middleware.sessions import SessionMiddleware
+from starlette.responses import Response
 
 import sqlite3
 import os
 import json
+import hmac
+import hashlib
+import secrets
 from pathlib import Path
+from urllib.parse import urlencode
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment
 
+
+# =========================================================
+# BASIC CONFIGURATION
+# =========================================================
 
 BASE = Path(__file__).resolve().parent
 DB = BASE / "labs.db"
@@ -19,36 +27,63 @@ templates = Jinja2Templates(directory=str(BASE / "templates"))
 
 app = FastAPI(title="قاعدة بيانات المخابر الخاصة")
 
-# =========================================================
-# الجلسات
-# =========================================================
-
-SESSION_SECRET = os.getenv("SESSION_SECRET", "CHANGE_THIS_SECRET_IN_RENDER")
-
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=SESSION_SECRET,
-    session_cookie="labs_session",
-    max_age=60 * 60 * 8,  # 8 ساعات
-    same_site="lax",
-    https_only=True,
-)
-
 
 # =========================================================
-# التوزيع الرسمي للمديريات
+# REGIONS / WILAYAS
 # =========================================================
 
 REGIONS = {
     "الجزائر": ["الجزائر", "بومرداس", "تيبازة"],
-    "البليدة": ["البليدة", "البويرة", "تيزي وزو", "المدية", "عين الدفلى", "الجلفة"],
-    "عنابة": ["عنابة", "سكيكدة", "سوق أهراس", "الطارف", "قالمة"],
-    "وهران": ["وهران", "تلمسان", "سيدي بلعباس", "عين تموشنت", "مستغانم"],
-    "بشار": ["بشار", "النعامة", "تندوف", "أدرار", "البيض", "بني عباس", "تيميمون", "برج باجي مختار"],
-    "سطيف": ["سطيف", "جيجل", "برج بوعريريج", "المسيلة", "ميلة", "بجاية"],
-    "باتنة": ["باتنة", "قسنطينة", "أم البواقي", "تبسة", "خنشلة", "بسكرة", "أولاد جلال"],
-    "سعيدة": ["سعيدة", "تيارت", "غليزان", "الشلف", "تيسمسيلت", "معسكر"],
-    "ورقلة": ["ورقلة", "غرداية", "الوادي", "إليزي", "تمنراست", "الأغواط", "تقرت", "المغير", "المنيعة", "جانت", "عين صالح", "عين قزام"],
+
+    "البليدة": [
+        "البليدة", "البويرة", "تيزي وزو", "المدية",
+        "عين الدفلى", "الجلفة"
+    ],
+
+    "عنابة": [
+        "عنابة", "سكيكدة", "سوق أهراس",
+        "الطارف", "قالمة"
+    ],
+
+    "وهران": [
+        "وهران", "تلمسان", "سيدي بلعباس",
+        "عين تموشنت", "مستغانم"
+    ],
+
+    "بشار": [
+        "بشار", "النعامة", "تندوف", "أدرار",
+        "البيض", "بني عباس", "تيميمون",
+        "برج باجي مختار"
+    ],
+
+    "سطيف": [
+        "سطيف", "جيجل", "برج بوعريريج",
+        "المسيلة", "ميلة", "بجاية"
+    ],
+
+    "باتنة": [
+        "باتنة", "قسنطينة", "أم البواقي",
+        "تبسة", "خنشلة", "بسكرة",
+        "أولاد جلال"
+    ],
+
+    "سعيدة": [
+        "سعيدة", "تيارت", "غليزان",
+        "الشلف", "تيسمسيلت", "معسكر"
+    ],
+
+    "ورقلة": [
+        "ورقلة", "غرداية", "الوادي", "إليزي",
+        "تمنراست", "الأغواط", "تقرت", "المغير",
+        "المنيعة", "جانت", "عين صالح", "عين قزام"
+    ],
+}
+
+
+ALL_WILAYAS = {
+    wilaya: region
+    for region, wilayas in REGIONS.items()
+    for wilaya in wilayas
 }
 
 
@@ -63,6 +98,8 @@ HEADERS = [
     "صاحب الرخصة",
     "المدير التقني",
     "وضعية المخبر",
+    "اختصاص النشاط",
+    "عائلات المنتوجات",
     "التحاليل الفيزيائية والكيميائية",
     "التحاليل الميكروبيولوجية",
     "تاريخ آخر تفتيش",
@@ -71,7 +108,7 @@ HEADERS = [
 
 
 # =========================================================
-# قاعدة البيانات
+# DATABASE
 # =========================================================
 
 def db():
@@ -80,9 +117,16 @@ def db():
     return con
 
 
+def column_exists(con, table, column):
+    rows = con.execute(f"PRAGMA table_info({table})").fetchall()
+    return any(row["name"] == column for row in rows)
+
+
 def init_db():
+
     con = db()
 
+    # Existing labs table
     con.execute("""
         CREATE TABLE IF NOT EXISTS labs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -96,10 +140,37 @@ def init_db():
             owner TEXT,
             technical_manager TEXT,
             status TEXT,
+            activity_specialty TEXT,
+            product_families TEXT,
             physico_chemical TEXT,
             microbiological TEXT,
             last_inspection TEXT,
             notes TEXT
+        )
+    """)
+
+    # Upgrade old database safely
+    if not column_exists(con, "labs", "activity_specialty"):
+        con.execute(
+            "ALTER TABLE labs ADD COLUMN activity_specialty TEXT"
+        )
+
+    if not column_exists(con, "labs", "product_families"):
+        con.execute(
+            "ALTER TABLE labs ADD COLUMN product_families TEXT"
+        )
+
+    # Accounts
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS accounts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL,
+            region TEXT,
+            wilaya TEXT,
+            active INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
@@ -111,89 +182,137 @@ init_db()
 
 
 # =========================================================
-# المستخدمون والصلاحيات
+# PASSWORD HASHING
 # =========================================================
 
-def load_json_env(name):
-    value = os.getenv(name, "").strip()
+def hash_password(password: str) -> str:
+    salt = secrets.token_bytes(16)
 
-    if not value:
-        return {}
+    key = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt,
+        200_000,
+    )
+
+    return (
+        "pbkdf2_sha256$"
+        + salt.hex()
+        + "$"
+        + key.hex()
+    )
+
+
+def verify_password(password: str, stored: str) -> bool:
 
     try:
-        data = json.loads(value)
-        return data if isinstance(data, dict) else {}
+        algorithm, salt_hex, key_hex = stored.split("$")
+
+        if algorithm != "pbkdf2_sha256":
+            return False
+
+        salt = bytes.fromhex(salt_hex)
+
+        key = hashlib.pbkdf2_hmac(
+            "sha256",
+            password.encode("utf-8"),
+            salt,
+            200_000,
+        )
+
+        return hmac.compare_digest(
+            key.hex(),
+            key_hex
+        )
+
     except Exception:
-        return {}
+        return False
 
 
-def get_users():
-    """
-    الحسابات تأتي من Render Environment Variables.
+# =========================================================
+# SESSION
+# =========================================================
 
-    ADMIN_PASSWORD
-    REGION_PASSWORDS
-    WILAYA_PASSWORDS
-    """
-
-    users = []
-
-    admin_password = os.getenv("ADMIN_PASSWORD", "").strip()
-
-    if admin_password:
-        users.append({
-            "username": "admin",
-            "password": admin_password,
-            "role": "admin",
-            "name": "الإدارة المركزية",
-        })
-
-    region_passwords = load_json_env("REGION_PASSWORDS")
-
-    for region, password in region_passwords.items():
-        if region in REGIONS and str(password).strip():
-            users.append({
-                "username": f"region:{region}",
-                "password": str(password),
-                "role": "region",
-                "name": region,
-                "region": region,
-            })
-
-    wilaya_passwords = load_json_env("WILAYA_PASSWORDS")
-
-    all_wilayas = {
-        wilaya
-        for values in REGIONS.values()
-        for wilaya in values
-    }
-
-    for wilaya, password in wilaya_passwords.items():
-        if wilaya in all_wilayas and str(password).strip():
-            users.append({
-                "username": f"wilaya:{wilaya}",
-                "password": str(password),
-                "role": "wilaya",
-                "name": wilaya,
-                "wilaya": wilaya,
-            })
-
-    return users
+SESSION_SECRET = os.getenv(
+    "SESSION_SECRET",
+    "CHANGE_THIS_SESSION_SECRET"
+)
 
 
-def authenticate(username, password):
-    for user in get_users():
-        if user["username"] == username and user["password"] == password:
-            return user
+def sign_session(data: dict) -> str:
 
-    return None
+    payload = json.dumps(
+        data,
+        ensure_ascii=False,
+        separators=(",", ":")
+    ).encode()
 
+    encoded = payload.hex()
+
+    signature = hmac.new(
+        SESSION_SECRET.encode(),
+        encoded.encode(),
+        hashlib.sha256
+    ).hexdigest()
+
+    return encoded + "." + signature
+
+
+def read_session(request: Request):
+
+    token = request.cookies.get("session")
+
+    if not token or "." not in token:
+        return None
+
+    encoded, signature = token.rsplit(".", 1)
+
+    expected = hmac.new(
+        SESSION_SECRET.encode(),
+        encoded.encode(),
+        hashlib.sha256
+    ).hexdigest()
+
+    if not hmac.compare_digest(signature, expected):
+        return None
+
+    try:
+        data = bytes.fromhex(encoded).decode()
+        return json.loads(data)
+    except Exception:
+        return None
+
+
+def set_session(response: Response, account: dict):
+
+    token = sign_session(account)
+
+    response.set_cookie(
+        key="session",
+        value=token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=60 * 60 * 12,
+    )
+
+
+def clear_session(response: Response):
+
+    response.delete_cookie("session")
+
+
+# =========================================================
+# AUTHORIZATION
+# =========================================================
 
 def current_user(request: Request):
-    return request.session.get("user")
+
+    return read_session(request)
 
 
 def require_login(request: Request):
+
     user = current_user(request)
 
     if not user:
@@ -202,135 +321,174 @@ def require_login(request: Request):
     return user
 
 
-def visible_labs(user):
-    con = db()
+def region_allows(user, region):
 
     if user["role"] == "admin":
-        rows = con.execute("""
-            SELECT * FROM labs
-            ORDER BY region, wilaya, name
-        """).fetchall()
+        return True
 
-    elif user["role"] == "region":
-        rows = con.execute("""
-            SELECT * FROM labs
-            WHERE region = ?
-            ORDER BY wilaya, name
-        """, (user["region"],)).fetchall()
+    if user["role"] == "region":
+        return region == user["region"]
 
-    elif user["role"] == "wilaya":
-        rows = con.execute("""
-            SELECT * FROM labs
-            WHERE wilaya = ?
-            ORDER BY name
-        """, (user["wilaya"],)).fetchall()
+    if user["role"] == "wilaya":
+        return region == ALL_WILAYAS.get(user["wilaya"])
 
-    else:
-        rows = []
+    return False
 
-    con.close()
 
-    return rows
+def wilaya_allows(user, wilaya):
+
+    if user["role"] == "admin":
+        return True
+
+    if user["role"] == "region":
+        return wilaya in REGIONS.get(user["region"], [])
+
+    if user["role"] == "wilaya":
+        return wilaya == user["wilaya"]
+
+    return False
 
 
 # =========================================================
-# الصفحة العامة
+# FILTERED LABS
+# =========================================================
+
+def get_filtered_labs(
+    user,
+    region=None,
+    wilaya=None,
+    activity=None,
+    products=None,
+    search=None,
+):
+
+    con = db()
+
+    query = """
+        SELECT *
+        FROM labs
+        WHERE 1=1
+    """
+
+    params = []
+
+    # Security scope
+    if user["role"] == "region":
+
+        query += " AND region = ?"
+        params.append(user["region"])
+
+    elif user["role"] == "wilaya":
+
+        query += " AND wilaya = ?"
+        params.append(user["wilaya"])
+
+    # User filters
+    if region and user["role"] == "admin":
+
+        query += " AND region = ?"
+        params.append(region)
+
+    if wilaya:
+
+        if wilaya_allows(user, wilaya):
+            query += " AND wilaya = ?"
+            params.append(wilaya)
+        else:
+            # Never allow scope escape
+            query += " AND 1 = 0"
+
+    if activity:
+
+        query += """
+            AND LOWER(COALESCE(activity_specialty, ''))
+            LIKE LOWER(?)
+        """
+
+        params.append("%" + activity + "%")
+
+    if products:
+
+        query += """
+            AND LOWER(COALESCE(product_families, ''))
+            LIKE LOWER(?)
+        """
+
+        params.append("%" + products + "%")
+
+    if search:
+
+        query += """
+            AND (
+                LOWER(name) LIKE LOWER(?)
+                OR LOWER(owner) LIKE LOWER(?)
+                OR LOWER(rc) LIKE LOWER(?)
+                OR LOWER(address) LIKE LOWER(?)
+            )
+        """
+
+        value = "%" + search + "%"
+
+        params.extend([
+            value,
+            value,
+            value,
+            value,
+        ])
+
+    query += """
+        ORDER BY region, wilaya, name
+    """
+
+    rows = con.execute(query, params).fetchall()
+
+    # Filter values
+    activity_values = [
+        row[0]
+        for row in con.execute("""
+            SELECT DISTINCT activity_specialty
+            FROM labs
+            WHERE activity_specialty IS NOT NULL
+              AND TRIM(activity_specialty) != ''
+            ORDER BY activity_specialty
+        """).fetchall()
+    ]
+
+    product_values = [
+        row[0]
+        for row in con.execute("""
+            SELECT DISTINCT product_families
+            FROM labs
+            WHERE product_families IS NOT NULL
+              AND TRIM(product_families) != ''
+            ORDER BY product_families
+        """).fetchall()
+    ]
+
+    con.close()
+
+    return rows, activity_values, product_values
+
+
+# =========================================================
+# LOGIN
 # =========================================================
 
 @app.get("/", response_class=HTMLResponse)
-def form_page(request: Request):
-
-    return templates.TemplateResponse(
-        request=request,
-        name="index.html",
-        context={
-            "request": request,
-            "regions": REGIONS,
-        },
-    )
-
-
-# =========================================================
-# إضافة مخبر
-# =========================================================
-
-@app.post("/add")
-def add_lab(
-    region: str = Form(...),
-    wilaya: str = Form(...),
-    name: str = Form(...),
-    rc: str = Form(""),
-    license_no: str = Form(""),
-    license_date: str = Form(""),
-    address: str = Form(""),
-    owner: str = Form(""),
-    technical_manager: str = Form(""),
-    status: str = Form("نشط"),
-    physico_chemical: str = Form(""),
-    microbiological: str = Form(""),
-    last_inspection: str = Form(""),
-    notes: str = Form("")
-):
-
-    if region not in REGIONS or wilaya not in REGIONS[region]:
-        raise HTTPException(
-            status_code=400,
-            detail="المديرية الولائية لا تتبع المديرية الجهوية المختارة"
-        )
-
-    con = db()
-
-    con.execute("""
-        INSERT INTO labs
-        (
-            region,
-            wilaya,
-            name,
-            rc,
-            license_no,
-            license_date,
-            address,
-            owner,
-            technical_manager,
-            status,
-            physico_chemical,
-            microbiological,
-            last_inspection,
-            notes
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        region,
-        wilaya,
-        name,
-        rc,
-        license_no,
-        license_date,
-        address,
-        owner,
-        technical_manager,
-        status,
-        physico_chemical,
-        microbiological,
-        last_inspection,
-        notes,
-    ))
-
-    con.commit()
-    con.close()
-
-    return RedirectResponse("/?sent=1", status_code=303)
-
-
-# =========================================================
-# تسجيل الدخول
-# =========================================================
-
-@app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
 
-    if current_user(request):
-        return RedirectResponse("/dashboard", status_code=303)
+    user = current_user(request)
+
+    if user:
+
+        if user["role"] == "admin":
+            return RedirectResponse("/admin", status_code=303)
+
+        if user["role"] == "region":
+            return RedirectResponse("/region", status_code=303)
+
+        if user["role"] == "wilaya":
+            return RedirectResponse("/wilaya", status_code=303)
 
     return templates.TemplateResponse(
         request=request,
@@ -346,114 +504,642 @@ def login_page(request: Request):
 def login(
     request: Request,
     username: str = Form(...),
-    password: str = Form(...)
+    password: str = Form(...),
 ):
 
-    user = authenticate(username.strip(), password)
+    username = username.strip()
 
-    if not user:
-        return templates.TemplateResponse(
-            request=request,
-            name="login.html",
-            context={
-                "request": request,
-                "error": "اسم المستخدم أو كلمة المرور غير صحيحة.",
-            },
-            status_code=401,
+    # Central administrator
+    admin_password = os.getenv("ADMIN_PASSWORD", "")
+
+    if username == "admin" and admin_password:
+        if hmac.compare_digest(password, admin_password):
+
+            response = RedirectResponse(
+                "/admin",
+                status_code=303
+            )
+
+            set_session(
+                response,
+                {
+                    "username": "admin",
+                    "role": "admin",
+                    "region": None,
+                    "wilaya": None,
+                }
+            )
+
+            return response
+
+    # Other accounts
+    con = db()
+
+    account = con.execute(
+        """
+        SELECT *
+        FROM accounts
+        WHERE username = ?
+          AND active = 1
+        """,
+        (username,)
+    ).fetchone()
+
+    con.close()
+
+    if account and verify_password(
+        password,
+        account["password_hash"]
+    ):
+
+        response = RedirectResponse(
+            "/region"
+            if account["role"] == "region"
+            else "/wilaya",
+            status_code=303
         )
 
-    request.session.clear()
+        set_session(
+            response,
+            {
+                "username": account["username"],
+                "role": account["role"],
+                "region": account["region"],
+                "wilaya": account["wilaya"],
+                "account_id": account["id"],
+            }
+        )
 
-    request.session["user"] = {
-        "username": user["username"],
-        "role": user["role"],
-        "name": user["name"],
-    }
+        return response
 
-    if user["role"] == "region":
-        request.session["user"]["region"] = user["region"]
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={
+            "request": request,
+            "error": "اسم المستخدم أو كلمة المرور غير صحيحة",
+        },
+        status_code=401,
+    )
 
-    elif user["role"] == "wilaya":
-        request.session["user"]["wilaya"] = user["wilaya"]
-
-    return RedirectResponse("/dashboard", status_code=303)
-
-
-# =========================================================
-# تسجيل الخروج
-# =========================================================
 
 @app.get("/logout")
-def logout(request: Request):
+def logout():
 
-    request.session.clear()
+    response = RedirectResponse(
+        "/",
+        status_code=303
+    )
 
-    return RedirectResponse("/login", status_code=303)
+    clear_session(response)
+
+    return response
 
 
 # =========================================================
-# لوحة البيانات حسب الصلاحية
+# COMMON FILTER DATA
 # =========================================================
 
-@app.get("/dashboard", response_class=HTMLResponse)
-def dashboard(request: Request):
+def filter_context(user, request):
+
+    region_filter = request.query_params.get("region")
+    wilaya_filter = request.query_params.get("wilaya")
+    activity = request.query_params.get("activity")
+    products = request.query_params.get("products")
+    search = request.query_params.get("search")
+
+    rows, activity_values, product_values = get_filtered_labs(
+        user,
+        region_filter,
+        wilaya_filter,
+        activity,
+        products,
+        search,
+    )
+
+    if user["role"] == "admin":
+        available_regions = list(REGIONS.keys())
+        available_wilayas = [
+            w
+            for ws in REGIONS.values()
+            for w in ws
+        ]
+
+    elif user["role"] == "region":
+        available_regions = [user["region"]]
+        available_wilayas = REGIONS.get(
+            user["region"],
+            []
+        )
+
+    else:
+        available_regions = [
+            ALL_WILAYAS.get(user["wilaya"])
+        ]
+
+        available_wilayas = [
+            user["wilaya"]
+        ]
+
+    return {
+        "rows": rows,
+        "count": len(rows),
+        "activity_values": activity_values,
+        "product_values": product_values,
+        "available_regions": available_regions,
+        "available_wilayas": available_wilayas,
+        "selected_region": region_filter or "",
+        "selected_wilaya": wilaya_filter or "",
+        "selected_activity": activity or "",
+        "selected_products": products or "",
+        "selected_search": search or "",
+        "user": user,
+    }
+
+
+# =========================================================
+# ADMIN
+# =========================================================
+
+@app.get("/admin", response_class=HTMLResponse)
+def admin_page(request: Request):
 
     user = require_login(request)
 
     if not user:
-        return RedirectResponse("/login", status_code=303)
+        return RedirectResponse("/", status_code=303)
 
-    labs = visible_labs(user)
+    if user["role"] != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="غير مصرح"
+        )
 
-    con = db()
-
-    if user["role"] == "admin":
-        count = con.execute(
-            "SELECT COUNT(*) FROM labs"
-        ).fetchone()[0]
-
-    elif user["role"] == "region":
-        count = con.execute(
-            "SELECT COUNT(*) FROM labs WHERE region = ?",
-            (user["region"],)
-        ).fetchone()[0]
-
-    else:
-        count = con.execute(
-            "SELECT COUNT(*) FROM labs WHERE wilaya = ?",
-            (user["wilaya"],)
-        ).fetchone()[0]
-
-    con.close()
+    context = filter_context(user, request)
 
     return templates.TemplateResponse(
         request=request,
         name="admin.html",
         context={
             "request": request,
-            "labs": labs,
-            "count": count,
-            "user": user,
+            **context,
         },
     )
 
 
 # =========================================================
-# الإبقاء على /admin كعنوان مباشر
+# ADD ACCOUNT
 # =========================================================
 
-@app.get("/admin")
-def admin_redirect(request: Request):
+@app.post("/admin/accounts/add")
+def add_account(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    role: str = Form(...),
+    region: str = Form(""),
+    wilaya: str = Form(""),
+):
 
-    return RedirectResponse("/dashboard", status_code=303)
+    user = require_login(request)
+
+    if not user or user["role"] != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="غير مصرح"
+        )
+
+    username = username.strip()
+
+    if role not in ["region", "wilaya"]:
+        raise HTTPException(
+            status_code=400,
+            detail="نوع الحساب غير صحيح"
+        )
+
+    if role == "region":
+
+        if region not in REGIONS:
+            raise HTTPException(
+                status_code=400,
+                detail="المديرية الجهوية غير صحيحة"
+            )
+
+        wilaya = None
+
+    if role == "wilaya":
+
+        if wilaya not in ALL_WILAYAS:
+            raise HTTPException(
+                status_code=400,
+                detail="المديرية الولائية غير صحيحة"
+            )
+
+        region = ALL_WILAYAS[wilaya]
+
+    if len(password) < 6:
+        raise HTTPException(
+            status_code=400,
+            detail="كلمة المرور يجب أن تكون 6 أحرف على الأقل"
+        )
+
+    con = db()
+
+    try:
+
+        con.execute(
+            """
+            INSERT INTO accounts
+            (username, password_hash, role, region, wilaya)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                username,
+                hash_password(password),
+                role,
+                region,
+                wilaya,
+            )
+        )
+
+        con.commit()
+
+    except sqlite3.IntegrityError:
+
+        con.close()
+
+        raise HTTPException(
+            status_code=400,
+            detail="اسم المستخدم موجود مسبقًا"
+        )
+
+    con.close()
+
+    return RedirectResponse(
+        "/admin",
+        status_code=303
+    )
 
 
 # =========================================================
-# حذف مخبر
+# CHANGE PASSWORD
 # =========================================================
 
-@app.post("/admin/delete/{lab_id}")
-def delete_lab(request: Request, lab_id: int):
+@app.post("/admin/accounts/{account_id}/password")
+def change_account_password(
+    account_id: int,
+    request: Request,
+    password: str = Form(...),
+):
+
+    user = require_login(request)
+
+    if not user or user["role"] != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="غير مصرح"
+        )
+
+    if len(password) < 6:
+        raise HTTPException(
+            status_code=400,
+            detail="كلمة المرور يجب أن تكون 6 أحرف على الأقل"
+        )
+
+    con = db()
+
+    con.execute(
+        """
+        UPDATE accounts
+        SET password_hash = ?
+        WHERE id = ?
+        """,
+        (
+            hash_password(password),
+            account_id,
+        )
+    )
+
+    con.commit()
+    con.close()
+
+    return RedirectResponse(
+        "/admin",
+        status_code=303
+    )
+
+
+# =========================================================
+# ENABLE / DISABLE ACCOUNT
+# =========================================================
+
+@app.post("/admin/accounts/{account_id}/toggle")
+def toggle_account(
+    account_id: int,
+    request: Request,
+):
+
+    user = require_login(request)
+
+    if not user or user["role"] != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="غير مصرح"
+        )
+
+    con = db()
+
+    con.execute(
+        """
+        UPDATE accounts
+        SET active =
+            CASE
+                WHEN active = 1 THEN 0
+                ELSE 1
+            END
+        WHERE id = ?
+        """,
+        (account_id,)
+    )
+
+    con.commit()
+    con.close()
+
+    return RedirectResponse(
+        "/admin",
+        status_code=303
+    )
+
+
+# =========================================================
+# DELETE ACCOUNT
+# =========================================================
+
+@app.post("/admin/accounts/{account_id}/delete")
+def delete_account(
+    account_id: int,
+    request: Request,
+):
+
+    user = require_login(request)
+
+    if not user or user["role"] != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="غير مصرح"
+        )
+
+    con = db()
+
+    con.execute(
+        "DELETE FROM accounts WHERE id = ?",
+        (account_id,)
+    )
+
+    con.commit()
+    con.close()
+
+    return RedirectResponse(
+        "/admin",
+        status_code=303
+    )
+
+
+# =========================================================
+# ACCOUNTS LIST FOR ADMIN
+# =========================================================
+
+@app.get("/admin/accounts")
+def accounts_list(request: Request):
+
+    user = require_login(request)
+
+    if not user or user["role"] != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="غير مصرح"
+        )
+
+    con = db()
+
+    accounts = con.execute(
+        """
+        SELECT
+            id,
+            username,
+            role,
+            region,
+            wilaya,
+            active,
+            created_at
+        FROM accounts
+        ORDER BY role, region, wilaya, username
+        """
+    ).fetchall()
+
+    con.close()
+
+    return {
+        "accounts": [
+            dict(row)
+            for row in accounts
+        ]
+    }
+
+
+# =========================================================
+# REGIONAL DASHBOARD
+# =========================================================
+
+@app.get("/region", response_class=HTMLResponse)
+def region_page(request: Request):
+
+    user = require_login(request)
+
+    if not user:
+        return RedirectResponse("/", status_code=303)
+
+    if user["role"] != "region":
+        raise HTTPException(
+            status_code=403,
+            detail="غير مصرح"
+        )
+
+    context = filter_context(user, request)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="region.html",
+        context={
+            "request": request,
+            **context,
+        },
+    )
+
+
+# =========================================================
+# WILAYA PAGE
+# =========================================================
+
+@app.get("/wilaya", response_class=HTMLResponse)
+def wilaya_page(request: Request):
+
+    user = require_login(request)
+
+    if not user:
+        return RedirectResponse("/", status_code=303)
+
+    if user["role"] != "wilaya":
+        raise HTTPException(
+            status_code=403,
+            detail="غير مصرح"
+        )
+
+    context = filter_context(user, request)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="wilaya.html",
+        context={
+            "request": request,
+            **context,
+        },
+    )
+
+
+# =========================================================
+# ADD LAB
+# =========================================================
+
+@app.post("/add")
+def add_lab(
+    request: Request,
+
+    region: str = Form(...),
+    wilaya: str = Form(...),
+    name: str = Form(...),
+
+    rc: str = Form(""),
+    license_no: str = Form(""),
+    license_date: str = Form(""),
+
+    address: str = Form(""),
+    owner: str = Form(""),
+    technical_manager: str = Form(""),
+
+    status: str = Form("نشط"),
+
+    activity_specialty: str = Form(""),
+    product_families: str = Form(""),
+
+    physico_chemical: str = Form(""),
+    microbiological: str = Form(""),
+
+    last_inspection: str = Form(""),
+    notes: str = Form(""),
+):
+
+    user = require_login(request)
+
+    if not user:
+        return RedirectResponse("/", status_code=303)
+
+    # Only regional/wilaya users submit data
+    if user["role"] not in ["wilaya", "region"]:
+        raise HTTPException(
+            status_code=403,
+            detail="الإدارة المركزية لا تضيف البيانات من هذه الصفحة"
+        )
+
+    # Submission is intended for a wilaya account
+    if user["role"] == "wilaya":
+
+        region = user["region"]
+        wilaya = user["wilaya"]
+
+    elif user["role"] == "region":
+
+        # Regional users do not submit through their dashboard
+        raise HTTPException(
+            status_code=403,
+            detail="المديرية الجهوية لها صلاحية الاطلاع فقط"
+        )
+
+    if region not in REGIONS:
+        raise HTTPException(
+            status_code=400,
+            detail="المديرية الجهوية غير صحيحة"
+        )
+
+    if wilaya not in REGIONS[region]:
+        raise HTTPException(
+            status_code=400,
+            detail="المديرية الولائية لا تتبع المديرية الجهوية"
+        )
+
+    con = db()
+
+    con.execute(
+        """
+        INSERT INTO labs
+        (
+            region,
+            wilaya,
+            name,
+            rc,
+            license_no,
+            license_date,
+            address,
+            owner,
+            technical_manager,
+            status,
+            activity_specialty,
+            product_families,
+            physico_chemical,
+            microbiological,
+            last_inspection,
+            notes
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            region,
+            wilaya,
+            name,
+            rc,
+            license_no,
+            license_date,
+            address,
+            owner,
+            technical_manager,
+            status,
+            activity_specialty,
+            product_families,
+            physico_chemical,
+            microbiological,
+            last_inspection,
+            notes,
+        )
+    )
+
+    con.commit()
+    con.close()
+
+    return RedirectResponse(
+        "/wilaya?sent=1",
+        status_code=303
+    )
+
+
+# =========================================================
+# DELETE LAB - ADMIN ONLY
+# =========================================================
+
+@app.post("/admin/labs/{lab_id}/delete")
+def delete_lab(
+    lab_id: int,
+    request: Request,
+):
 
     user = require_login(request)
 
@@ -473,11 +1159,14 @@ def delete_lab(request: Request, lab_id: int):
     con.commit()
     con.close()
 
-    return RedirectResponse("/dashboard", status_code=303)
+    return RedirectResponse(
+        "/admin",
+        status_code=303
+    )
 
 
 # =========================================================
-# تصدير Excel
+# EXPORT EXCEL
 # =========================================================
 
 @app.get("/admin/export")
@@ -485,30 +1174,31 @@ def export_excel(request: Request):
 
     user = require_login(request)
 
-    if not user:
-        return RedirectResponse("/login", status_code=303)
+    if not user or user["role"] != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="غير مصرح"
+        )
 
-    if user["role"] == "admin":
-        rows = visible_labs(user)
-    else:
-        rows = visible_labs(user)
+    context = filter_context(user, request)
+    rows = context["rows"]
 
     wb = Workbook()
+
     ws = wb.active
     ws.title = "قاعدة المخابر"
-
     ws.sheet_view.rightToLeft = True
 
     ws.append(HEADERS)
 
-    for c in ws[1]:
-        c.font = Font(bold=True)
-        c.alignment = Alignment(
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(
             horizontal="center",
             vertical="center"
         )
 
-    keys = [
+    fields = [
         "region",
         "wilaya",
         "name",
@@ -519,20 +1209,26 @@ def export_excel(request: Request):
         "owner",
         "technical_manager",
         "status",
+        "activity_specialty",
+        "product_families",
         "physico_chemical",
         "microbiological",
         "last_inspection",
         "notes",
     ]
 
-    for r in rows:
-        ws.append([r[k] for k in keys])
+    for row in rows:
+
+        ws.append([
+            row[field]
+            for field in fields
+        ])
 
     for col in ws.columns:
 
         max_len = max(
-            len(str(c.value or ""))
-            for c in col
+            len(str(cell.value or ""))
+            for cell in col
         )
 
         ws.column_dimensions[
@@ -542,14 +1238,15 @@ def export_excel(request: Request):
             45
         )
 
-    filename = "قاعدة_المخابر_الخاصة.xlsx"
-
-    path = BASE / filename
+    path = BASE / "قاعدة_المخابر_الخاصة.xlsx"
 
     wb.save(path)
 
     return FileResponse(
         path,
-        filename=filename,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        filename="قاعدة_المخابر_الخاصة.xlsx",
+        media_type=(
+            "application/vnd.openxmlformats-officedocument."
+            "spreadsheetml.sheet"
+        ),
     )
