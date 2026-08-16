@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>المديرية الولائية — قاعدة بيانات المخابر</title>
+
+<style>
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    font-family:Arial,sans-serif;
+    background:#f4f6f8;
+    margin:0;
+    padding:20px;
+    color:#222;
+}
+
+.container{
+    max-width:1500px;
+    margin:auto;
+}
+
+.card{
+    background:#fff;
+    padding:22px;
+    border-radius:16px;
+    box-shadow:0 3px 15px #0001;
+    margin-bottom:20px;
+}
+
+.header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:15px;
+    flex-wrap:wrap;
+}
+
+.title{
+    margin:0;
+}
+
+.subtitle{
+    color:#666;
+    margin-top:8px;
+}
+
+.counter{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    background:#146c43;
+    color:white;
+    padding:10px 18px;
+    border-radius:10px;
+    font-weight:bold;
+}
+
+.actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:18px;
+}
+
+.button{
+    display:inline-block;
+    text-decoration:none;
+    border:0;
+    padding:10px 16px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:14px;
+}
+
+.logout{
+    background:#555;
+    color:white;
+}
+
+.filter-box{
+    display:grid;
+    grid-template-columns:
+        repeat(auto-fit,minmax(190px,1fr));
+    gap:12px;
+}
+
+.filter-box label{
+    font-weight:bold;
+    margin-bottom:5px;
+    display:block;
+}
+
+.filter-box input,
+.filter-box select{
+    width:100%;
+    padding:10px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    background:white;
+}
+
+.filter-actions{
+    display:flex;
+    align-items:end;
+    gap:10px;
+}
+
+.filter-button{
+    background:#146c43;
+    color:white;
+}
+
+.reset-button{
+    background:#777;
+    color:white;
+}
+
+.table-wrap{
+    overflow-x:auto;
+}
+
+table{
+    border-collapse:collapse;
+    width:100%;
+    min-width:1500px;
+    font-size:12px;
+}
+
+th,
+td{
+    border:1px solid #ddd;
+    padding:8px;
+    vertical-align:top;
+}
+
+th{
+    background:#eef1f3;
+    white-space:nowrap;
+}
+
+.empty{
+    text-align:center;
+    padding:30px;
+    color:#777;
+}
+
+.badge{
+    display:inline-block;
+    padding:5px 10px;
+    border-radius:20px;
+    background:#e9f5ee;
+    color:#146c43;
+    font-weight:bold;
+}
+
+.section-title{
+    margin-top:0;
+}
+
+.notice{
+    background:#eef6ff;
+    border-right:4px solid #2878c8;
+    padding:12px;
+    border-radius:8px;
+    margin-bottom:15px;
+}
+
+@media(max-width:700px){
+
+    body{
+        padding:10px;
+    }
+
+    .card{
+        padding:15px;
+    }
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<!-- =====================================================
+     HEADER
+===================================================== -->
+
+<div class="card">
+
+<div class="header">
+
+<div>
+
+<h1 class="title">
+المديرية الولائية — {{ user.wilaya }}
+</h1>
+
+<div class="subtitle">
+
+المديرية الجهوية:
+<strong>{{ user.region }}</strong>
+
+<br>
+
+المستخدم:
+<strong>{{ user.username }}</strong>
+
+</div>
+
+</div>
+
+<div class="counter">
+
+عدد المخابر:
+{{ count }}
+
+</div>
+
+</div>
+
+<div class="actions">
+
+<a
+    class="button logout"
+    href="/logout"
+>
+تسجيل الخروج
+</a>
+
+</div>
+
+</div>
+
+
+<!-- =====================================================
+     FORM AREA
+===================================================== -->
+
+<div class="card">
+
+<h2 class="section-title">
+إضافة مخبر
+</h2>
+
+<div class="notice">
+
+البيانات التي يتم إدخالها هنا تُسجل تلقائيًا ضمن قاعدة بيانات
+<strong>{{ user.wilaya }}</strong>
+ولا يمكن لهذا الحساب إدخال بيانات لمديرية أخرى.
+
+</div>
+
+<!--
+
+مهم:
+ضع هنا نفس محتوى الاستمارة الموجودة حاليًا في index.html.
+
+لا نعيد تصميم الاستمارة حتى لا نغيّر ما تم إنجازه.
+
+-->
+
+<form method="post" action="/add">
+
+<input
+    type="hidden"
+    name="region"
+    value="{{ user.region }}"
+>
+
+<input
+    type="hidden"
+    name="wilaya"
+    value="{{ user.wilaya }}"
+>
+
+
+<label>اسم المخبر</label>
+
+<input
+    type="text"
+    name="name"
+    required
+>
+
+
+<label>رقم السجل التجاري</label>
+
+<input
+    type="text"
+    name="rc"
+>
+
+
+<label>رقم رخصة الاستغلال</label>
+
+<input
+    type="text"
+    name="license_no"
+>
+
+
+<label>تاريخ توقيع الرخصة</label>
+
+<input
+    type="date"
+    name="license_date"
+>
+
+
+<label>عنوان النشاط</label>
+
+<input
+    type="text"
+    name="address"
+>
+
+
+<label>صاحب الرخصة</label>
+
+<input
+    type="text"
+    name="owner"
+>
+
+
+<label>المدير التقني</label>
+
+<input
+    type="text"
+    name="technical_manager"
+>
+
+
+<label>وضعية المخبر</label>
+
+<select name="status">
+
+<option value="نشط">نشط</option>
+<option value="متوقف">متوقف</option>
+<option value="معلق">معلق</option>
+
+</select>
+
+
+<label>اختصاص النشاط</label>
+
+<input
+    type="text"
+    name="activity_specialty"
+>
+
+
+<label>عائلات المنتوجات</label>
+
+<input
+    type="text"
+    name="product_families"
+>
+
+
+<label>التحاليل الفيزيائية والكيميائية</label>
+
+<input
+    type="text"
+    name="physico_chemical"
+>
+
+
+<label>التحاليلات الميكروبيولوجية</label>
+
+<input
+    type="text"
+    name="microbiological"
+>
+
+
+<label>تاريخ آخر تفتيش</label>
+
+<input
+    type="date"
+    name="last_inspection"
+>
+
+
+<label>ملاحظات</label>
+
+<textarea
+    name="notes"
+    rows="4"
+></textarea>
+
+
+<br>
+
+<button
+    type="submit"
+    class="button filter-button"
+>
+حفظ بيانات المخبر
+</button>
+
+</form>
+
+</div>
+
+
+<!-- =====================================================
+     FILTERS
+===================================================== -->
+
+<div class="card">
+
+<h2 class="section-title">
+قاعدة بيانات مخابر {{ user.wilaya }}
+</h2>
+
+<form
+    method="get"
+    action="/wilaya"
+>
+
+<div class="filter-box">
+
+<div>
+
+<label>
+اختصاص النشاط
+</label>
+
+<select name="activity">
+
+<option value="">
+الكل
+</option>
+
+{% for value in activity_values %}
+
+<option
+    value="{{ value }}"
+    {% if selected_activity == value %}selected{% endif %}
+>
+{{ value }}
+</option>
+
+{% endfor %}
+
+</select>
+
+</div>
+
+
+<div>
+
+<label>
+عائلات المنتوجات
+</label>
+
+<select name="products">
+
+<option value="">
+الكل
+</option>
+
+{% for value in product_values %}
+
+<option
+    value="{{ value }}"
+    {% if selected_products == value %}selected{% endif %}
+>
+{{ value }}
+</option>
+
+{% endfor %}
+
+</select>
+
+</div>
+
+
+<div>
+
+<label>
+بحث
+</label>
+
+<input
+    type="text"
+    name="search"
+    value="{{ selected_search }}"
+    placeholder="اسم المخبر أو صاحب الرخصة..."
+>
+
+</div>
+
+
+<div class="filter-actions">
+
+<button
+    type="submit"
+    class="button filter-button"
+>
+تطبيق الفلترة
+</button>
+
+<a
+    href="/wilaya"
+    class="button reset-button"
+>
+إلغاء الفلترة
+</a>
+
+</div>
+
+</div>
+
+</form>
+
+</div>
+
+
+<!-- =====================================================
+     DATABASE TABLE
+===================================================== -->
+
+<div class="card">
+
+<div class="table-wrap">
+
+{% if rows %}
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>المديرية الولائية</th>
+<th>اسم المخبر</th>
+<th>السجل التجاري</th>
+<th>رخصة الاستغلال</th>
+<th>تاريخ الرخصة</th>
+<th>عنوان النشاط</th>
+<th>صاحب الرخصة</th>
+<th>المدير التقني</th>
+<th>الوضعية</th>
+<th>اختصاص النشاط</th>
+<th>عائلات المنتوجات</th>
+<th>التحاليل الفيزيائية والكيميائية</th>
+<th>التحاليل الميكروبيولوجية</th>
+<th>آخر تفتيش</th>
+<th>ملاحظات</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+{% for r in rows %}
+
+<tr>
+
+<td>
+{{ r.wilaya }}
+</td>
+
+<td>
+{{ r.name }}
+</td>
+
+<td>
+{{ r.rc }}
+</td>
+
+<td>
+{{ r.license_no }}
+</td>
+
+<td>
+{{ r.license_date }}
+</td>
+
+<td>
+{{ r.address }}
+</td>
+
+<td>
+{{ r.owner }}
+</td>
+
+<td>
+{{ r.technical_manager }}
+</td>
+
+<td>
+
+<span class="badge">
+{{ r.status }}
+</span>
+
+</td>
+
+<td>
+{{ r.activity_specialty }}
+</td>
+
+<td>
+{{ r.product_families }}
+</td>
+
+<td>
+{{ r.physico_chemical }}
+</td>
+
+<td>
+{{ r.microbiological }}
+</td>
+
+<td>
+{{ r.last_inspection }}
+</td>
+
+<td>
+{{ r.notes }}
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+{% else %}
+
+<div class="empty">
+
+لا توجد بيانات مخابر مسجلة حاليًا لهذه المديرية.
+
+</div>
+
+{% endif %}
+
+</div>
+
+</div>
+
+</div>
+
+</body>
+
+</html>
