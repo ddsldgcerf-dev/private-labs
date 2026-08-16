@@ -114,6 +114,58 @@ body{
     margin-bottom:20px;
 }
 
+
+/* =====================================================
+   AUTO CREATE BASIC ACCOUNTS
+===================================================== */
+
+.auto-accounts-box{
+    background:#f8faf9;
+    border:1px solid #dce8e1;
+    border-radius:12px;
+    padding:18px;
+    margin-bottom:25px;
+}
+
+.auto-accounts-box h3{
+    margin-top:0;
+    margin-bottom:8px;
+}
+
+.auto-accounts-note{
+    color:#666;
+    margin:0 0 15px;
+    line-height:1.7;
+}
+
+.auto-create-button{
+    background:#146c43;
+    color:white;
+}
+
+.auto-create-button:disabled{
+    opacity:.65;
+    cursor:not-allowed;
+}
+
+.auto-accounts-result{
+    margin-top:12px;
+    font-weight:bold;
+}
+
+.auto-accounts-result.success{
+    color:#146c43;
+}
+
+.auto-accounts-result.error{
+    color:#b3261e;
+}
+
+
+/* =====================================================
+   ACCOUNT FORM
+===================================================== */
+
 .form-grid{
     display:grid;
     grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
@@ -147,6 +199,11 @@ select{
     color:white;
     margin-top:15px;
 }
+
+
+/* =====================================================
+   ACCOUNTS TABLE
+===================================================== */
 
 .accounts-box{
     margin-top:25px;
@@ -214,6 +271,11 @@ select{
     padding:7px;
 }
 
+
+/* =====================================================
+   CENTRAL TABLE
+===================================================== */
+
 table{
     border-collapse:collapse;
     width:100%;
@@ -247,6 +309,11 @@ th{
     color:#777;
 }
 
+
+/* =====================================================
+   FILTERS
+===================================================== */
+
 .filter-box{
     display:grid;
     grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
@@ -263,6 +330,11 @@ th{
     background:#777;
     color:white;
 }
+
+
+/* =====================================================
+   MOBILE
+===================================================== */
 
 @media(max-width:700px){
 
@@ -288,9 +360,10 @@ th{
 
 <div class="container">
 
+
 <!-- =====================================================
      HEADER
-====================================================== -->
+===================================================== -->
 
 <div class="card">
 
@@ -325,6 +398,7 @@ th{
 تصدير Excel
 </a>
 
+
 <button
     type="button"
     class="button settings-button"
@@ -332,6 +406,7 @@ th{
 >
 ⚙️ الإعدادات
 </button>
+
 
 <a
     class="button logout"
@@ -345,19 +420,56 @@ th{
 
 <!-- =====================================================
      SETTINGS
-====================================================== -->
+===================================================== -->
 
 <div
     id="settingsPanel"
     class="settings-panel"
 >
 
+
 <h2 class="settings-title">
 ⚙️ إدارة الحسابات
 </h2>
 
 
-<!-- ADD ACCOUNT -->
+<!-- =====================================================
+     AUTO CREATE BASIC ACCOUNTS
+===================================================== -->
+
+<div class="auto-accounts-box">
+
+<h3>
+إنشاء الحسابات الأساسية تلقائيًا
+</h3>
+
+<p class="auto-accounts-note">
+
+يقوم النظام بإنشاء الحسابات الأساسية للمديريات
+الجهوية والولائية تلقائيًا وربط كل حساب
+بالمديرية التابعة له.
+
+</p>
+
+<button
+    type="button"
+    class="button auto-create-button"
+    onclick="createBasicAccounts()"
+>
+⚡ إنشاء الحسابات الأساسية
+</button>
+
+<div
+    id="autoAccountsResult"
+    class="auto-accounts-result"
+></div>
+
+</div>
+
+
+<!-- =====================================================
+     ADD ACCOUNT
+===================================================== -->
 
 <form
     method="post"
@@ -365,6 +477,7 @@ th{
 >
 
 <div class="form-grid">
+
 
 <div class="form-group">
 
@@ -505,7 +618,7 @@ th{
 
 <!-- =====================================================
      ACCOUNTS LIST
-====================================================== -->
+===================================================== -->
 
 <div class="accounts-box">
 
@@ -529,8 +642,8 @@ th{
 
 
 <!-- =====================================================
-     CENTRAL TABLE
-====================================================== -->
+     CENTRAL DATABASE
+===================================================== -->
 
 <div class="card">
 
@@ -539,7 +652,9 @@ th{
 </h2>
 
 
-<!-- FILTERS -->
+<!-- =====================================================
+     FILTERS
+===================================================== -->
 
 <form
     method="get"
@@ -547,6 +662,7 @@ th{
 >
 
 <div class="filter-box">
+
 
 <select name="region">
 
@@ -656,6 +772,10 @@ th{
 </form>
 
 
+<!-- =====================================================
+     CENTRAL TABLE
+===================================================== -->
+
 <div class="table-wrap">
 
 {% if rows %}
@@ -705,37 +825,69 @@ th{
 
 <tr>
 
-<td>{{ r.region }}</td>
+<td>
+{{ r.region }}
+</td>
 
-<td>{{ r.wilaya }}</td>
+<td>
+{{ r.wilaya }}
+</td>
 
-<td>{{ r.name }}</td>
+<td>
+{{ r.name }}
+</td>
 
-<td>{{ r.rc }}</td>
+<td>
+{{ r.rc }}
+</td>
 
-<td>{{ r.license_no }}</td>
+<td>
+{{ r.license_no }}
+</td>
 
-<td>{{ r.license_date }}</td>
+<td>
+{{ r.license_date }}
+</td>
 
-<td>{{ r.address }}</td>
+<td>
+{{ r.address }}
+</td>
 
-<td>{{ r.owner }}</td>
+<td>
+{{ r.owner }}
+</td>
 
-<td>{{ r.technical_manager }}</td>
+<td>
+{{ r.technical_manager }}
+</td>
 
-<td>{{ r.status }}</td>
+<td>
+{{ r.status }}
+</td>
 
-<td>{{ r.activity_specialty }}</td>
+<td>
+{{ r.activity_specialty }}
+</td>
 
-<td>{{ r.product_families }}</td>
+<td>
+{{ r.product_families }}
+</td>
 
-<td>{{ r.physico_chemical }}</td>
+<td>
+{{ r.physico_chemical }}
+</td>
 
-<td>{{ r.microbiological }}</td>
+<td>
+{{ r.microbiological }}
+</td>
 
-<td>{{ r.last_inspection }}</td>
+<td>
+{{ r.last_inspection }}
+</td>
 
-<td>{{ r.notes }}</td>
+<td>
+{{ r.notes }}
+</td>
 
 <td>
 
@@ -766,7 +918,9 @@ th{
 {% else %}
 
 <div class="empty">
+
 لا توجد بيانات مخابر مسجلة حاليًا.
+
 </div>
 
 {% endif %}
@@ -779,6 +933,7 @@ th{
 
 
 <script>
+
 
 /* =====================================================
    SETTINGS PANEL
@@ -870,32 +1025,172 @@ function changeAccountType(){
 
 
 /* =====================================================
+   AUTO CREATE BASIC ACCOUNTS
+===================================================== */
+
+async function createBasicAccounts(){
+
+    const result =
+        document.getElementById(
+            "autoAccountsResult"
+        );
+
+    const button =
+        document.querySelector(
+            ".auto-create-button"
+        );
+
+
+    const confirmed = confirm(
+
+        "سيقوم النظام بإنشاء الحسابات الأساسية للمديريات الجهوية والولائية التي لا تملك حسابات.\n\n" +
+
+        "الحسابات الموجودة مسبقًا لن يتم تكرارها.\n\n" +
+
+        "هل تريد المتابعة؟"
+
+    );
+
+
+    if(!confirmed){
+
+        return;
+
+    }
+
+
+    button.disabled = true;
+
+    button.textContent =
+        "جاري إنشاء الحسابات...";
+
+
+    result.className =
+        "auto-accounts-result";
+
+    result.textContent =
+        "";
+
+
+    try{
+
+        const response =
+            await fetch(
+                "/admin/accounts/create-basic",
+                {
+                    method:"POST"
+                }
+            );
+
+
+        let data;
+
+
+        try{
+
+            data =
+                await response.json();
+
+        }
+
+        catch(e){
+
+            throw new Error(
+                "استجابة غير صحيحة من الخادم"
+            );
+
+        }
+
+
+        if(!response.ok){
+
+            throw new Error(
+                data.detail ||
+                "حدث خطأ أثناء إنشاء الحسابات"
+            );
+
+        }
+
+
+        result.className =
+            "auto-accounts-result success";
+
+
+        result.textContent =
+            "✓ " +
+            (
+                data.message ||
+                "تم إنشاء الحسابات الأساسية بنجاح."
+            );
+
+
+        loadAccounts();
+
+    }
+
+    catch(error){
+
+        result.className =
+            "auto-accounts-result error";
+
+
+        result.textContent =
+            "✗ " +
+            error.message;
+
+    }
+
+    finally{
+
+        button.disabled = false;
+
+        button.textContent =
+            "⚡ إنشاء الحسابات الأساسية";
+
+    }
+
+}
+
+
+/* =====================================================
    LOAD ACCOUNTS
 ===================================================== */
 
 async function loadAccounts(){
 
     const container =
-        document.getElementById("accountsContainer");
+        document.getElementById(
+            "accountsContainer"
+        );
+
 
     try{
 
         const response =
-            await fetch("/admin/accounts");
+            await fetch(
+                "/admin/accounts"
+            );
+
 
         if(!response.ok){
 
-            throw new Error("Unauthorized");
+            throw new Error(
+                "Unauthorized"
+            );
 
         }
+
 
         const data =
             await response.json();
 
+
         if(!data.accounts.length){
 
             container.innerHTML =
-                '<div class="empty">لا توجد حسابات إضافية حاليًا.</div>';
+                '<div class="empty">' +
+                'لا توجد حسابات إضافية حاليًا.' +
+                '</div>';
 
             return;
 
@@ -903,31 +1198,51 @@ async function loadAccounts(){
 
 
         let html = `
+
         <table class="accounts-table">
 
         <tr>
 
-        <th>اسم المستخدم</th>
+        <th>
+        اسم المستخدم
+        </th>
 
-        <th>نوع الحساب</th>
+        <th>
+        نوع الحساب
+        </th>
 
-        <th>المديرية الجهوية</th>
+        <th>
+        المديرية الجهوية
+        </th>
 
-        <th>المديرية الولائية</th>
+        <th>
+        المديرية الولائية
+        </th>
 
-        <th>الحالة</th>
+        <th>
+        الحالة
+        </th>
 
-        <th>تغيير كلمة المرور</th>
+        <th>
+        تغيير كلمة المرور
+        </th>
 
-        <th>الحالة</th>
+        <th>
+        الحالة
+        </th>
 
-        <th>حذف</th>
+        <th>
+        حذف
+        </th>
 
         </tr>
+
         `;
 
 
-        data.accounts.forEach(account => {
+        data.accounts.forEach(
+            account => {
+
 
             const role =
                 account.role === "region"
@@ -944,7 +1259,9 @@ async function loadAccounts(){
             <tr>
 
             <td>
-            ${escapeHtml(account.username)}
+            ${escapeHtml(
+                account.username
+            )}
             </td>
 
             <td>
@@ -952,15 +1269,29 @@ async function loadAccounts(){
             </td>
 
             <td>
-            ${escapeHtml(account.region || "-")}
+            ${escapeHtml(
+                account.region || "-"
+            )}
             </td>
 
             <td>
-            ${escapeHtml(account.wilaya || "-")}
+            ${escapeHtml(
+                account.wilaya || "-"
+            )}
             </td>
 
-            <td class="${active ? "account-active" : "account-disabled"}">
-            ${active ? "نشط" : "معطل"}
+            <td class="${
+                active
+                ? "account-active"
+                : "account-disabled"
+            }">
+
+            ${
+                active
+                ? "نشط"
+                : "معطل"
+            }
+
             </td>
 
             <td>
@@ -968,7 +1299,9 @@ async function loadAccounts(){
             <form
                 class="password-form"
                 method="post"
-                action="/admin/accounts/${account.id}/password"
+                action="/admin/accounts/${
+                    account.id
+                }/password"
                 onsubmit="return confirmPassword();"
             >
 
@@ -995,14 +1328,22 @@ async function loadAccounts(){
 
             <form
                 method="post"
-                action="/admin/accounts/${account.id}/toggle"
+                action="/admin/accounts/${
+                    account.id
+                }/toggle"
             >
 
             <button
                 type="submit"
                 class="small-button toggle-button"
             >
-            ${active ? "تعطيل" : "تفعيل"}
+
+            ${
+                active
+                ? "تعطيل"
+                : "تفعيل"
+            }
+
             </button>
 
             </form>
@@ -1013,8 +1354,12 @@ async function loadAccounts(){
 
             <form
                 method="post"
-                action="/admin/accounts/${account.id}/delete"
-                onsubmit="return confirm('هل أنت متأكد من حذف هذا الحساب؟');"
+                action="/admin/accounts/${
+                    account.id
+                }/delete"
+                onsubmit="return confirm(
+                    'هل أنت متأكد من حذف هذا الحساب؟'
+                );"
             >
 
             <button
@@ -1037,14 +1382,18 @@ async function loadAccounts(){
 
         html += "</table>";
 
-        container.innerHTML = html;
+
+        container.innerHTML =
+            html;
 
     }
 
     catch(error){
 
         container.innerHTML =
-            '<div class="empty">تعذر تحميل الحسابات.</div>';
+            '<div class="empty">' +
+            'تعذر تحميل الحسابات.' +
+            '</div>';
 
     }
 
@@ -1070,18 +1419,42 @@ function confirmPassword(){
 
 function escapeHtml(value){
 
-    if(value === null || value === undefined){
+    if(
+        value === null ||
+        value === undefined
+    ){
 
         return "";
 
     }
 
+
     return String(value)
-        .replace(/&/g,"&amp;")
-        .replace(/</g,"&lt;")
-        .replace(/>/g,"&gt;")
-        .replace(/"/g,"&quot;")
-        .replace(/'/g,"&#039;");
+
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+
+        .replace(
+            /</g,
+            "&lt;"
+        )
+
+        .replace(
+            />/g,
+            "&gt;"
+        )
+
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+
+        .replace(
+            /'/g,
+            "&#039;"
+        );
 
 }
 
