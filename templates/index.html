@@ -1,85 +1,33 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="utf-8">
-<title>قاعدة بيانات المخابر الخاصة</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>استمارة تحديث بيانات المخابر الخاصة</title>
 <style>
-body{font-family:Arial,sans-serif;background:#f4f6f8;margin:0;padding:25px;color:#222}
-.container{max-width:1400px;margin:auto}
-.card{background:white;padding:22px;border-radius:14px;box-shadow:0 2px 10px #0001;margin-bottom:20px}
-h1{margin-top:0}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-label{font-weight:bold}
-input,select,textarea{width:100%;box-sizing:border-box;padding:10px;border:1px solid #ccc;border-radius:8px;margin-top:5px}
-textarea{min-height:80px}
-.full{grid-column:1/-1}
-button,.export{display:inline-block;padding:11px 20px;border:0;border-radius:8px;background:#146c43;color:white;cursor:pointer;text-decoration:none;margin-top:12px}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{border:1px solid #ddd;padding:8px;text-align:right;vertical-align:top}
-th{background:#eee}
-.note{font-size:13px;color:#666}
-@media(max-width:900px){.grid{grid-template-columns:1fr}}
+body{font-family:Arial,sans-serif;background:#f4f6f8;margin:0;padding:24px;color:#222}.container{max-width:1000px;margin:auto}.card{background:#fff;padding:24px;border-radius:14px;box-shadow:0 2px 10px #0001}h1{margin-top:0}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}label{font-weight:bold;display:block}input,select,textarea{width:100%;box-sizing:border-box;padding:10px;border:1px solid #ccc;border-radius:8px;margin-top:6px}textarea{min-height:85px}.full{grid-column:1/-1}button{padding:12px 25px;border:0;border-radius:8px;background:#146c43;color:#fff;cursor:pointer;font-size:16px}.ok{background:#e8f5e9;padding:12px;border-radius:8px;margin-bottom:15px}@media(max-width:700px){.grid{grid-template-columns:1fr}}
 </style>
 </head>
-<body>
-<div class="container">
-<div class="card">
-<h1>قاعدة بيانات المخابر الخاصة</h1>
-<p class="note">إضافة مخبر جديد — البيانات تضاف مباشرة إلى القاعدة المركزية.</p>
-<form method="post" action="/add">
-<div class="grid">
-<div><label>المديرية الجهوية</label>
-<select name="region" id="region" required onchange="loadWilayas()">
-<option value="">اختر المديرية الجهوية</option>
-{% for region, wilayas in regions.items() %}<option value="{{region}}">{{region}}</option>{% endfor %}
-</select></div>
-<div><label>المديرية الولائية</label>
-<select name="wilaya" id="wilaya" required><option value="">اختر أولًا المديرية الجهوية</option></select></div>
+<body><div class="container"><div class="card">
+<h1>استمارة تحديث بيانات المخابر الخاصة</h1>
+{% if request.query_params.get('sent') %}<div class="ok">تم إرسال بيانات المخبر بنجاح.</div>{% endif %}
+<form method="post" action="/add"><div class="grid">
+<div><label>المديرية الجهوية</label><select name="region" id="region" required onchange="loadWilayas()"><option value="">اختر المديرية الجهوية</option>{% for region in regions %}<option value="{{region}}">{{region}}</option>{% endfor %}</select></div>
+<div><label>المديرية الولائية</label><select name="wilaya" id="wilaya" required><option value="">اختر المديرية الجهوية أولًا</option></select></div>
 <div><label>اسم المخبر</label><input name="name" required></div>
 <div><label>رقم السجل التجاري</label><input name="rc"></div>
 <div><label>رقم رخصة الاستغلال</label><input name="license_no"></div>
 <div><label>تاريخ توقيع الرخصة</label><input type="date" name="license_date"></div>
-<div><label>عنوان النشاط</label><input name="address"></div>
+<div class="full"><label>عنوان النشاط</label><input name="address"></div>
 <div><label>صاحب الرخصة</label><input name="owner"></div>
 <div><label>المدير التقني</label><input name="technical_manager"></div>
-<div><label>وضعية المخبر</label><select name="status"><option>نشط</option><option>مشطوب</option></select></div>
-<div class="full"><label>التحاليل الفيزيائية والكيميائية</label>
-<textarea name="physico_chemical" placeholder="مثال: المواد الغذائية، مواد التجميل، مواد التنظيف"></textarea></div>
-<div class="full"><label>التحاليل الميكروبيولوجية</label>
-<textarea name="microbiological" placeholder="مثال: المواد الغذائية، المياه، مواد التجميل"></textarea></div>
+<div><label>وضعية المخبر</label><select name="status"><option value="نشط">نشط</option><option value="مشطوب">مشطوب</option></select></div>
 <div><label>تاريخ آخر تفتيش</label><input type="date" name="last_inspection"></div>
+<div class="full"><label>التحاليل الفيزيائية والكيميائية</label><textarea name="physico_chemical" placeholder="اكتب عائلات المنتجات المرخصة، وافصل بينها بفاصلة: المواد الغذائية، مواد التجميل، مواد التنظيف"></textarea></div>
+<div class="full"><label>التحاليل الميكروبيولوجية</label><textarea name="microbiological" placeholder="اكتب عائلات المنتجات المرخصة، وافصل بينها بفاصلة"></textarea></div>
 <div class="full"><label>ملاحظات</label><textarea name="notes"></textarea></div>
-</div>
-<button type="submit">إضافة المخبر</button>
-<a class="export" href="/export">تصدير Excel</a>
-</form>
-</div>
-
-<div class="card">
-<h2>الجدول المركزي</h2>
-<table>
-<tr>{% for h in ["المديرية الجهوية","المديرية الولائية","اسم المخبر","السجل التجاري","رخصة الاستغلال","تاريخ الرخصة","العنوان","صاحب الرخصة","المدير التقني","الوضعية","التحاليل الفيزيائية والكيميائية","التحاليل الميكروبيولوجية","آخر تفتيش"] %}<th>{{h}}</th>{% endfor %}</tr>
-{% for r in labs %}
-<tr>
-<td>{{r.region}}</td><td>{{r.wilaya}}</td><td>{{r.name}}</td><td>{{r.rc}}</td><td>{{r.license_no}}</td>
-<td>{{r.license_date}}</td><td>{{r.address}}</td><td>{{r.owner}}</td><td>{{r.technical_manager}}</td>
-<td>{{r.status}}</td><td>{{r.physico_chemical}}</td><td>{{r.microbiological}}</td><td>{{r.last_inspection}}</td>
-</tr>
-{% endfor %}
-</table>
-</div>
-</div>
+<div class="full"><button type="submit">إرسال البيانات</button></div>
+</div></form></div></div>
 <script>
-const data = {{ regions | tojson }};
-function loadWilayas(){
-  const region=document.getElementById("region").value;
-  const w=document.getElementById("wilaya");
-  w.innerHTML="";
-  (data[region]||[]).forEach(x=>{
-    const o=document.createElement("option"); o.value=x; o.textContent=x; w.appendChild(o);
-  });
-}
-</script>
-</body>
-</html>
-
+const regions={{regions|tojson}};
+function loadWilayas(){const r=document.getElementById('region').value,w=document.getElementById('wilaya');w.innerHTML='<option value="">اختر المديرية الولائية</option>';(regions[r]||[]).forEach(x=>{const o=document.createElement('option');o.value=x;o.textContent=x;w.appendChild(o)})}
+</script></body></html>
