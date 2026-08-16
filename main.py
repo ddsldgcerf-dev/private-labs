@@ -61,9 +61,9 @@ def home(request: Request):
     con = db()
     labs = con.execute("SELECT * FROM labs ORDER BY region, wilaya, name").fetchall()
     con.close()
-    return templates.TemplateResponse("index.html", {
-        "request": request, "labs": labs, "regions": REGIONS
-    })
+    return templates.TemplateResponse(request=request, name="index.html", context={
+        "request": request, "labs": labs, "regions": REGIONS}
+    )
 
 @app.post("/add")
 def add_lab(
