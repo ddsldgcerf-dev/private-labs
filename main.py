@@ -20,7 +20,11 @@ from openpyxl.styles import Font, Alignment
 # =========================================================
 
 BASE = Path(__file__).resolve().parent
+
 DB = BASE / "labs.db"
+
+# قاعدة بيانات مستقلة لحصائل التفتيش
+INSPECTION_DB = BASE / "inspection_reports.db"
 
 templates = Jinja2Templates(
     directory=str(BASE / "templates")
@@ -131,101 +135,6 @@ ALL_WILAYAS = {
 }
 
 
-# =========================================================
-# OFFICIAL WILAYA CODES
-# =========================================================
-#
-# هذه الأكواد هي المرجع الوحيد لتسمية حسابات المديريات
-# الولائية بصيغة:
-#
-#     dcw_XX
-#
-# تم اعتماد الترقيم الرسمي الحالي للولايات.
-# الولايات 59 إلى 69 مضافة هنا أيضًا، دون إدخالها في
-# REGIONS الحالية، حتى لا نغيّر بنية المشروع الحالية
-# من تلقاء أنفسنا.
-#
-# ملاحظة:
-#   إدخال الولايات الجديدة في REGIONS وما يرتبط بها من
-#   مديريات جهوية/صلاحيات سيتم في تعديل مستقل عندما نطلبه.
-#
-
-WILAYA_CODES = {
-
-    "أدرار": "01",
-    "الشلف": "02",
-    "الأغواط": "03",
-    "أم البواقي": "04",
-    "باتنة": "05",
-    "بجاية": "06",
-    "بسكرة": "07",
-    "بشار": "08",
-    "البليدة": "09",
-    "البويرة": "10",
-    "تمنراست": "11",
-    "تبسة": "12",
-    "تلمسان": "13",
-    "تيارت": "14",
-    "تيزي وزو": "15",
-    "الجزائر": "16",
-    "الجلفة": "17",
-    "جيجل": "18",
-    "سطيف": "19",
-    "سعيدة": "20",
-    "سكيكدة": "21",
-    "سيدي بلعباس": "22",
-    "عنابة": "23",
-    "قالمة": "24",
-    "قسنطينة": "25",
-    "المدية": "26",
-    "مستغانم": "27",
-    "المسيلة": "28",
-    "معسكر": "29",
-    "ورقلة": "30",
-    "وهران": "31",
-    "البيض": "32",
-    "إليزي": "33",
-    "برج بوعريريج": "34",
-    "بومرداس": "35",
-    "الطارف": "36",
-    "تندوف": "37",
-    "تيسمسيلت": "38",
-    "الوادي": "39",
-    "خنشلة": "40",
-    "سوق أهراس": "41",
-    "تيبازة": "42",
-    "ميلة": "43",
-    "عين الدفلى": "44",
-    "النعامة": "45",
-    "عين تموشنت": "46",
-    "غرداية": "47",
-    "غليزان": "48",
-    "تيميمون": "49",
-    "برج باجي مختار": "50",
-    "بني عباس": "51",
-    "أولاد جلال": "52",
-    "عين صالح": "53",
-    "عين قزام": "54",
-    "تقرت": "55",
-    "جانت": "56",
-    "المغير": "57",
-    "المنيعة": "58",
-
-    # الولايات الجديدة
-    "أفلو": "59",
-    "بريكة": "60",
-    "القنطرة": "61",
-    "بئر العاتر": "62",
-    "العريشة": "63",
-    "قصر الشلالة": "64",
-    "عين وسارة": "65",
-    "مسعد": "66",
-    "قصر البخاري": "67",
-    "بوسعادة": "68",
-    "الأبيض سيدي الشيخ": "69",
-}
-
-
 HEADERS = [
     "المديرية الجهوية",
     "المديرية الولائية",
@@ -259,6 +168,21 @@ def db():
     return con
 
 
+# =========================================================
+# INSPECTION REPORTS DATABASE CONNECTION
+# =========================================================
+
+def inspection_db():
+
+    con = sqlite3.connect(
+        INSPECTION_DB
+    )
+
+    con.row_factory = sqlite3.Row
+
+    return con
+
+
 def column_exists(con, table, column):
 
     rows = con.execute(
@@ -271,30 +195,22 @@ def column_exists(con, table, column):
     )
 
 
+# =========================================================
+# MIGRATE OLD ACCOUNT USERNAMES
+# =========================================================
+
 def migrate_old_account_usernames(con):
 
     """
-    ترحيل الحسابات القديمة إلى الصيغة القانونية الجديدة.
+    ترحيل الحسابات القديمة:
 
-    القديم:
-        dr_XX
-        dw_XX
+        dr_01  -> drc_01
+        dr_02  -> drc_02
+        ...
 
-    الجديد:
-        drc_XX
-        dcw_XX
-
-    بالنسبة للمديريات الولائية لا نعتمد رقم ترتيب
-    الحساب القديم، وإنما نحدد رقم الحساب من اسم الولاية
-    المرتبط بالحساب نفسه.
-
-    مثال:
-        حساب تبسة القديم قد يكون dw_17 بسبب ترتيب REGIONS،
-        لكنه يصبح:
-            dcw_12
-
-        حساب تيبازة يصبح:
-            dcw_42
+        dw_01  -> dcw_01
+        dw_02  -> dcw_02
+        ...
 
     لا يتم تغيير:
         - كلمة المرور
@@ -328,6 +244,8 @@ def migrate_old_account_usernames(con):
         if not old_account:
             continue
 
+        # إذا كان الاسم الجديد موجودًا أصلًا
+        # لا نعبث بالحسابين
         new_account = con.execute(
             """
             SELECT id
@@ -356,71 +274,60 @@ def migrate_old_account_usernames(con):
     # WILAYA ACCOUNTS
     # -----------------------------------------------------
 
-    # لا نعتمد wilaya_index هنا.
-    # نعتمد الولاية المسجلة داخل الحساب للوصول إلى
-    # الرقم الرسمي الصحيح.
+    wilaya_index = 1
 
-    old_accounts = con.execute(
-        """
-        SELECT *
-        FROM accounts
-        WHERE role = 'wilaya'
-        """
-    ).fetchall()
+    for region, wilayas in REGIONS.items():
 
-    for account in old_accounts:
+        for wilaya in wilayas:
 
-        wilaya = account["wilaya"]
-
-        if not wilaya:
-            continue
-
-        official_code = WILAYA_CODES.get(
-            wilaya
-        )
-
-        if not official_code:
-            continue
-
-        new_username = (
-            f"dcw_{official_code}"
-        )
-
-        # إذا كان الحساب يحمل الاسم الجديد بالفعل
-        if account["username"] == new_username:
-            continue
-
-        # لا نلمس حسابًا آخر يحمل الاسم الرسمي
-        new_account = con.execute(
-            """
-            SELECT id
-            FROM accounts
-            WHERE username = ?
-              AND id != ?
-            """,
-            (
-                new_username,
-                account["id"],
+            old_username = (
+                f"dw_{wilaya_index:02d}"
             )
-        ).fetchone()
 
-        if new_account:
-            continue
-
-        # نرحل فقط الحسابات القديمة التي تبدأ بـ dw_
-        # أو الحسابات التي لا تحمل الصيغة الرسمية.
-        con.execute(
-            """
-            UPDATE accounts
-            SET username = ?
-            WHERE id = ?
-            """,
-            (
-                new_username,
-                account["id"],
+            new_username = (
+                f"dcw_{wilaya_index:02d}"
             )
-        )
 
+            old_account = con.execute(
+                """
+                SELECT *
+                FROM accounts
+                WHERE username = ?
+                """,
+                (old_username,)
+            ).fetchone()
+
+            if old_account:
+
+                new_account = con.execute(
+                    """
+                    SELECT id
+                    FROM accounts
+                    WHERE username = ?
+                    """,
+                    (new_username,)
+                ).fetchone()
+
+                if not new_account:
+
+                    con.execute(
+                        """
+                        UPDATE accounts
+                        SET username = ?
+                        WHERE id = ?
+                        """,
+                        (
+                            new_username,
+                            old_account["id"],
+                        )
+                    )
+
+            wilaya_index += 1
+
+
+# =========================================================
+# MAIN DATABASE INITIALIZATION
+# =========================================================
 
 def init_db():
 
@@ -537,7 +444,120 @@ def init_db():
     con.close()
 
 
+# =========================================================
+# INSPECTION REPORTS DATABASE INITIALIZATION
+# =========================================================
+
+def init_inspection_db():
+
+    con = inspection_db()
+
+    # -----------------------------------------------------
+    # MONTHLY INSPECTION REPORTS
+    # -----------------------------------------------------
+
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS inspection_reports (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            region TEXT NOT NULL,
+
+            wilaya TEXT NOT NULL,
+
+            year INTEGER NOT NULL,
+
+            month INTEGER NOT NULL,
+
+            inspection_count INTEGER NOT NULL DEFAULT 0,
+
+            violation_count INTEGER NOT NULL DEFAULT 0,
+
+            previous_reservations INTEGER NOT NULL DEFAULT 0,
+
+            resolved_reservations INTEGER NOT NULL DEFAULT 0,
+
+            unresolved_reservations INTEGER NOT NULL DEFAULT 0,
+
+            notes TEXT,
+
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+
+            UNIQUE (
+                wilaya,
+                year,
+                month
+            )
+
+        )
+    """)
+
+    # -----------------------------------------------------
+    # VIOLATION TYPES / FREQUENCY
+    # -----------------------------------------------------
+
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS inspection_violations (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            report_id INTEGER NOT NULL,
+
+            violation_name TEXT NOT NULL,
+
+            violation_count INTEGER NOT NULL DEFAULT 0,
+
+            notes TEXT,
+
+            FOREIGN KEY (
+                report_id
+            )
+            REFERENCES inspection_reports(id)
+            ON DELETE CASCADE
+
+        )
+    """)
+
+    # -----------------------------------------------------
+    # INDEXES
+    # -----------------------------------------------------
+
+    con.execute("""
+        CREATE INDEX IF NOT EXISTS
+        idx_inspection_region
+        ON inspection_reports(region)
+    """)
+
+    con.execute("""
+        CREATE INDEX IF NOT EXISTS
+        idx_inspection_wilaya
+        ON inspection_reports(wilaya)
+    """)
+
+    con.execute("""
+        CREATE INDEX IF NOT EXISTS
+        idx_inspection_year_month
+        ON inspection_reports(year, month)
+    """)
+
+    con.execute("""
+        CREATE INDEX IF NOT EXISTS
+        idx_violation_report
+        ON inspection_violations(report_id)
+    """)
+
+    con.commit()
+
+    con.close()
+
+
+# =========================================================
+# INITIALIZE DATABASES
+# =========================================================
+
 init_db()
+
+init_inspection_db()
 
 
 # =========================================================
@@ -762,6 +782,42 @@ def wilaya_allows(
     if user["role"] == "wilaya":
 
         return wilaya == user["wilaya"]
+
+    return False
+
+
+# =========================================================
+# INSPECTION REPORT AUTHORIZATION
+# =========================================================
+
+def inspection_scope_allows(
+    user,
+    region,
+    wilaya
+):
+
+    if user["role"] == "admin":
+
+        return True
+
+    if user["role"] == "region":
+
+        return (
+            region == user["region"]
+            and
+            wilaya in REGIONS.get(
+                user["region"],
+                []
+            )
+        )
+
+    if user["role"] == "wilaya":
+
+        return (
+            region == user["region"]
+            and
+            wilaya == user["wilaya"]
+        )
 
     return False
 
@@ -1354,6 +1410,7 @@ def bootstrap_accounts(
         start=1
     ):
 
+        # الصيغة الجديدة
         username = f"drc_{index:02d}"
 
         existing = con.execute(
@@ -1411,26 +1468,22 @@ def bootstrap_accounts(
     # WILAYA ACCOUNTS
     # -----------------------------------------------------
 
+    wilaya_index = 1
+
     for region, wilayas in REGIONS.items():
 
         for wilaya in wilayas:
 
-            official_code = WILAYA_CODES.get(
-                wilaya
-            )
-
-            if not official_code:
-                continue
-
-            # الرقم هنا هو الرقم الرسمي للولاية
+            # الصيغة الجديدة
             username = (
-                f"dcw_{official_code}"
+                f"dcw_{wilaya_index:02d}"
             )
+
+            wilaya_index += 1
 
             existing = con.execute(
                 """
-                SELECT id, username, role,
-                       region, wilaya
+                SELECT id, username
                 FROM accounts
                 WHERE username = ?
                 """,
@@ -1441,31 +1494,6 @@ def bootstrap_accounts(
 
                 existing_accounts.append({
                     "username": username,
-                    "role": "wilaya",
-                    "region": region,
-                    "wilaya": wilaya,
-                })
-
-                continue
-
-            # حماية إضافية:
-            # إذا كان هناك حساب ولائي مرتبط بنفس الولاية
-            # فلا ننشئ حسابًا ثانيًا.
-            existing_by_wilaya = con.execute(
-                """
-                SELECT id, username
-                FROM accounts
-                WHERE role = 'wilaya'
-                  AND wilaya = ?
-                """,
-                (wilaya,)
-            ).fetchone()
-
-            if existing_by_wilaya:
-
-                existing_accounts.append({
-                    "username":
-                        existing_by_wilaya["username"],
                     "role": "wilaya",
                     "region": region,
                     "wilaya": wilaya,
@@ -1519,7 +1547,7 @@ def bootstrap_accounts(
         "existing_count":
             len(existing_accounts),
         "message":
-            "تم إنشاء الحسابات الأساسية بالترقيم الرسمي للولايات"
+            "تم إنشاء الحسابات الأساسية بنجاح"
     }
 
 
@@ -1586,9 +1614,6 @@ def add_account(
 
         wilaya = None
 
-        # لا نفرض هنا رقمًا رسميًا على الحساب الجهوي.
-        # الصيغة المعتمدة هي drc_XX.
-
     # -----------------------------------------------------
     # WILAYA ACCOUNT
     # -----------------------------------------------------
@@ -1606,23 +1631,6 @@ def add_account(
         region = ALL_WILAYAS[
             wilaya
         ]
-
-        official_code = WILAYA_CODES.get(
-            wilaya
-        )
-
-        if not official_code:
-
-            raise HTTPException(
-                status_code=400,
-                detail=
-                "لا يوجد ترقيم رسمي مسجل لهذه الولاية"
-            )
-
-        # الاسم الرسمي للحساب الولائي
-        username = (
-            f"dcw_{official_code}"
-        )
 
     if len(password) < 6:
 
