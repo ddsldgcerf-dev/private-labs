@@ -1413,12 +1413,25 @@ def inspections_summary_api(request: Request):
 # INSPECTION EXCEL EXPORT
 # =========================================================
 
+# =========================================================
+# INSPECTION EXCEL EXPORT
+# متاح لجميع الصلاحيات وفق نطاق كل مستخدم
+# Wilaya: ولايته فقط
+# Region: مديرياته الولائية فقط
+# Admin: جميع البيانات
+# =========================================================
+
+@app.get("/inspections/export")
 @app.get("/admin/inspections/export")
 def export_inspections_excel(request: Request):
+
     user = require_login(request)
 
-    if not user or user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="غير مصرح")
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="غير مصرح"
+        )
 
     rows = get_filtered_inspections(
         user,
@@ -1434,14 +1447,21 @@ def export_inspections_excel(request: Request):
     )
 
     wb = Workbook()
+
     ws = wb.active
     ws.title = "حصائل التفتيش"
     ws.sheet_view.rightToLeft = True
+
     ws.append(INSPECTION_HEADERS)
 
     for cell in ws[1]:
+
         cell.font = Font(bold=True)
-        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+        cell.alignment = Alignment(
+            horizontal="center",
+            vertical="center"
+        )
 
     fields = [
         "region",
@@ -1458,16 +1478,28 @@ def export_inspections_excel(request: Request):
     ]
 
     for row in rows:
-        ws.append([row[field] for field in fields])
+
+        ws.append([
+            row[field]
+            for field in fields
+        ])
 
     for col in ws.columns:
-        max_len = max(len(str(cell.value or "")) for cell in col)
-        ws.column_dimensions[col[0].column_letter].width = min(
+
+        max_len = max(
+            len(str(cell.value or ""))
+            for cell in col
+        )
+
+        ws.column_dimensions[
+            col[0].column_letter
+        ].width = min(
             max(max_len + 3, 12),
             45
         )
 
     path = BASE / "حصائل_عمليات_التفتيش.xlsx"
+
     wb.save(path)
 
     return FileResponse(
