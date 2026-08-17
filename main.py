@@ -176,6 +176,132 @@ def column_exists(con, table, column):
     )
 
 
+def migrate_old_account_usernames(con):
+
+    """
+    ترحيل الحسابات القديمة:
+
+        dr_01  -> drc_01
+        dr_02  -> drc_02
+        ...
+
+        dw_01  -> dcw_01
+        dw_02  -> dcw_02
+        ...
+
+    لا يتم تغيير:
+        - كلمة المرور
+        - الدور
+        - المديرية الجهوية
+        - المديرية الولائية
+        - حالة الحساب
+    """
+
+    # -----------------------------------------------------
+    # REGIONAL ACCOUNTS
+    # -----------------------------------------------------
+
+    for index, region in enumerate(
+        REGIONS.keys(),
+        start=1
+    ):
+
+        old_username = f"dr_{index:02d}"
+        new_username = f"drc_{index:02d}"
+
+        old_account = con.execute(
+            """
+            SELECT *
+            FROM accounts
+            WHERE username = ?
+            """,
+            (old_username,)
+        ).fetchone()
+
+        if not old_account:
+            continue
+
+        # إذا كان الاسم الجديد موجودًا أصلًا
+        # لا نعبث بالحسابين
+        new_account = con.execute(
+            """
+            SELECT id
+            FROM accounts
+            WHERE username = ?
+            """,
+            (new_username,)
+        ).fetchone()
+
+        if new_account:
+            continue
+
+        con.execute(
+            """
+            UPDATE accounts
+            SET username = ?
+            WHERE id = ?
+            """,
+            (
+                new_username,
+                old_account["id"],
+            )
+        )
+
+    # -----------------------------------------------------
+    # WILAYA ACCOUNTS
+    # -----------------------------------------------------
+
+    wilaya_index = 1
+
+    for region, wilayas in REGIONS.items():
+
+        for wilaya in wilayas:
+
+            old_username = (
+                f"dw_{wilaya_index:02d}"
+            )
+
+            new_username = (
+                f"dcw_{wilaya_index:02d}"
+            )
+
+            old_account = con.execute(
+                """
+                SELECT *
+                FROM accounts
+                WHERE username = ?
+                """,
+                (old_username,)
+            ).fetchone()
+
+            if old_account:
+
+                new_account = con.execute(
+                    """
+                    SELECT id
+                    FROM accounts
+                    WHERE username = ?
+                    """,
+                    (new_username,)
+                ).fetchone()
+
+                if not new_account:
+
+                    con.execute(
+                        """
+                        UPDATE accounts
+                        SET username = ?
+                        WHERE id = ?
+                        """,
+                        (
+                            new_username,
+                            old_account["id"],
+                        )
+                    )
+
+            wilaya_index += 1
+
+
 def init_db():
 
     con = db()
@@ -279,6 +405,12 @@ def init_db():
 
         )
     """)
+
+    # -----------------------------------------------------
+    # MIGRATE OLD USERNAMES
+    # -----------------------------------------------------
+
+    migrate_old_account_usernames(con)
 
     con.commit()
 
@@ -1102,7 +1234,8 @@ def bootstrap_accounts(
         start=1
     ):
 
-        username = f"dr_{index:02d}"
+        # الصيغة الجديدة
+        username = f"drc_{index:02d}"
 
         existing = con.execute(
             """
@@ -1165,8 +1298,9 @@ def bootstrap_accounts(
 
         for wilaya in wilayas:
 
+            # الصيغة الجديدة
             username = (
-                f"dw_{wilaya_index:02d}"
+                f"dcw_{wilaya_index:02d}"
             )
 
             wilaya_index += 1
