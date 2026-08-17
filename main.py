@@ -1290,6 +1290,7 @@ def inspections_page(request: Request):
     context = {
         "request": request,
         "user": user,
+        "REGIONS": REGIONS,
     }
 
     # هذه الصفحة تعتمد لاحقًا على inspections.html،
