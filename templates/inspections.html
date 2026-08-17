@@ -236,11 +236,10 @@ th{
         <a class="button primary" href="#addInspection">إضافة حصيلة تفتيش</a>
         {% endif %}
 
-        {% if user.role == "admin" %}
-        <a class="button secondary" id="exportButton" href="/admin/inspections/export">
+        <!-- التعديل الوحيد: التصدير متاح لجميع الصلاحيات -->
+        <a class="button secondary" id="exportButton" href="/inspections/export">
             تصدير Excel
         </a>
-        {% endif %}
 
         <a class="button gray" href="{% if user.role == 'admin' %}/admin{% elif user.role == 'region' %}/region{% else %}/wilaya{% endif %}">
             العودة
@@ -622,7 +621,7 @@ function updateExportLink(){
     const link = document.getElementById("exportButton");
     if(!link) return;
 
-    link.href = "/admin/inspections/export?" +
+    link.href = "/inspections/export?" +
         queryString().toString();
 }
 
