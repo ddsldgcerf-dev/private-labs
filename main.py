@@ -981,3 +981,499 @@ def export_excel(request: Request):
             "spreadsheetml.sheet"
         ),
     )
+
+
+# =========================================================
+# INSPECTIONS / INSPECTION RETURNS
+# إضافة مستقلة: لا تمس قاعدة بيانات المخابر أو صلاحياتها
+# =========================================================
+
+INSPECTION_HEADERS = [
+    "المديرية الجهوية",
+    "المديرية الولائية",
+    "اسم المخبر",
+    "تاريخ التفتيش",
+    "هل توجد مخالفات؟",
+    "المخالفات المرصودة",
+    "هل توجد مخالفات سابقة؟",
+    "وضعية المخالفات السابقة",
+    "هل تم رفع التحفظ؟",
+    "هل تمت معالجة المخالفات؟",
+    "ملاحظات",
+]
+
+
+def init_inspections_db():
+    """
+    قاعدة مستقلة لحصائل عمليات التفتيش.
+
+    لا تتضمن:
+        - اسم المفتش
+        - أعضاء فريق التفتيش
+        - نوع التفتيش
+        - سبب التفتيش
+        - عينات
+        - منتجات
+        - سحب أو حجز أو إتلاف
+
+    كل عملية تفتيش تسجل كعملية مستقلة، ومن ثم يمكن استخراج
+    الحصائل الشهرية والثلاثية ونصف السنوية والسنوية بالاستعلامات.
+    """
+    con = db()
+
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS inspections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            region TEXT NOT NULL,
+            wilaya TEXT NOT NULL,
+            lab_name TEXT NOT NULL,
+            inspection_date TEXT NOT NULL,
+            has_violations INTEGER NOT NULL DEFAULT 0,
+            violations TEXT,
+            previous_violations INTEGER NOT NULL DEFAULT 0,
+            previous_violations_status TEXT,
+            reservations_lifted INTEGER NOT NULL DEFAULT 0,
+            violations_processed INTEGER NOT NULL DEFAULT 0,
+            notes TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    con.commit()
+    con.close()
+
+
+init_inspections_db()
+
+
+def inspection_user_allows(user, region=None, wilaya=None):
+    """نفس نطاق الصلاحيات المعتمد في قاعدة المخابر."""
+    if not user:
+        return False
+
+    if user["role"] == "admin":
+        return True
+
+    if user["role"] == "region":
+        if region is not None and region != user["region"]:
+            return False
+        if wilaya is not None and not wilaya_allows(user, wilaya):
+            return False
+        return True
+
+    if user["role"] == "wilaya":
+        if wilaya is not None:
+            return wilaya == user["wilaya"]
+        if region is not None:
+            return region == user["region"]
+        return True
+
+    return False
+
+
+def get_filtered_inspections(
+    user,
+    region=None,
+    wilaya=None,
+    date_from=None,
+    date_to=None,
+    has_violations=None,
+    previous_violations=None,
+    reservations_lifted=None,
+    violations_processed=None,
+    search=None,
+):
+    """استخراج سجل التفتيش وفق نطاق المستخدم وجميع المرشحات المتاحة."""
+
+    con = db()
+
+    query = "SELECT * FROM inspections WHERE 1=1"
+    params = []
+
+    # -----------------------------------------------------
+    # SECURITY SCOPE
+    # -----------------------------------------------------
+
+    if user["role"] == "region":
+        query += " AND region = ?"
+        params.append(user["region"])
+
+    elif user["role"] == "wilaya":
+        query += " AND wilaya = ?"
+        params.append(user["wilaya"])
+
+    # -----------------------------------------------------
+    # LOCATION FILTERS
+    # -----------------------------------------------------
+
+    if region:
+        if region_allows(user, region):
+            query += " AND region = ?"
+            params.append(region)
+        else:
+            query += " AND 1 = 0"
+
+    if wilaya:
+        if wilaya_allows(user, wilaya):
+            query += " AND wilaya = ?"
+            params.append(wilaya)
+        else:
+            query += " AND 1 = 0"
+
+    # -----------------------------------------------------
+    # DATE FILTERS
+    # -----------------------------------------------------
+
+    if date_from:
+        query += " AND inspection_date >= ?"
+        params.append(date_from)
+
+    if date_to:
+        query += " AND inspection_date <= ?"
+        params.append(date_to)
+
+    # -----------------------------------------------------
+    # VIOLATIONS FILTERS
+    # -----------------------------------------------------
+
+    if has_violations in ("0", "1"):
+        query += " AND has_violations = ?"
+        params.append(int(has_violations))
+
+    if previous_violations in ("0", "1"):
+        query += " AND previous_violations = ?"
+        params.append(int(previous_violations))
+
+    if reservations_lifted in ("0", "1"):
+        query += " AND reservations_lifted = ?"
+        params.append(int(reservations_lifted))
+
+    if violations_processed in ("0", "1"):
+        query += " AND violations_processed = ?"
+        params.append(int(violations_processed))
+
+    # -----------------------------------------------------
+    # LAB SEARCH
+    # -----------------------------------------------------
+
+    if search:
+        query += """
+            AND (
+                LOWER(lab_name) LIKE LOWER(?)
+                OR LOWER(violations) LIKE LOWER(?)
+                OR LOWER(previous_violations_status) LIKE LOWER(?)
+                OR LOWER(notes) LIKE LOWER(?)
+            )
+        """
+        value = "%" + search + "%"
+        params.extend([value, value, value, value])
+
+    query += " ORDER BY inspection_date DESC, region, wilaya, lab_name"
+
+    rows = con.execute(query, params).fetchall()
+    con.close()
+
+    return rows
+
+
+# =========================================================
+# ADD INSPECTION RETURN - DCW ONLY
+# =========================================================
+
+@app.post("/inspections/add")
+def add_inspection(
+    request: Request,
+    lab_name: str = Form(...),
+    inspection_date: str = Form(...),
+    has_violations: int = Form(0),
+    violations: str = Form(""),
+    previous_violations: int = Form(0),
+    previous_violations_status: str = Form(""),
+    reservations_lifted: int = Form(0),
+    violations_processed: int = Form(0),
+    notes: str = Form(""),
+):
+    user = require_login(request)
+
+    if not user:
+        return RedirectResponse("/", status_code=303)
+
+    # التسجيل يتم من طرف المديرية الولائية فقط.
+    if user["role"] != "wilaya":
+        raise HTTPException(
+            status_code=403,
+            detail="المديرية الولائية فقط لها صلاحية إدخال حصائل عمليات التفتيش"
+        )
+
+    region = user["region"]
+    wilaya = user["wilaya"]
+
+    if region not in REGIONS:
+        raise HTTPException(
+            status_code=400,
+            detail="المديرية الجهوية غير صحيحة"
+        )
+
+    if wilaya not in REGIONS[region]:
+        raise HTTPException(
+            status_code=400,
+            detail="المديرية الولائية لا تتبع المديرية الجهوية"
+        )
+
+    if not lab_name.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="اسم المخبر مطلوب"
+        )
+
+    if has_violations not in (0, 1):
+        raise HTTPException(status_code=400, detail="قيمة المخالفات غير صحيحة")
+
+    if previous_violations not in (0, 1):
+        raise HTTPException(status_code=400, detail="قيمة المخالفات السابقة غير صحيحة")
+
+    if reservations_lifted not in (0, 1):
+        raise HTTPException(status_code=400, detail="قيمة رفع التحفظ غير صحيحة")
+
+    if violations_processed not in (0, 1):
+        raise HTTPException(status_code=400, detail="قيمة معالجة المخالفات غير صحيحة")
+
+    con = db()
+
+    con.execute("""
+        INSERT INTO inspections (
+            region,
+            wilaya,
+            lab_name,
+            inspection_date,
+            has_violations,
+            violations,
+            previous_violations,
+            previous_violations_status,
+            reservations_lifted,
+            violations_processed,
+            notes
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        region,
+        wilaya,
+        lab_name.strip(),
+        inspection_date,
+        has_violations,
+        violations.strip(),
+        previous_violations,
+        previous_violations_status.strip(),
+        reservations_lifted,
+        violations_processed,
+        notes.strip(),
+    ))
+
+    con.commit()
+    con.close()
+
+    return RedirectResponse("/wilaya?inspection_sent=1", status_code=303)
+
+
+# =========================================================
+# INSPECTIONS VIEW
+# DCW: own wilaya / DRC: own region / ADMIN: all
+# =========================================================
+
+@app.get("/inspections", response_class=HTMLResponse)
+def inspections_page(request: Request):
+    user = require_login(request)
+
+    if not user:
+        return RedirectResponse("/", status_code=303)
+
+    context = {
+        "request": request,
+        "user": user,
+    }
+
+    # هذه الصفحة تعتمد لاحقًا على inspections.html،
+    # ولا تغيّر أي صفحة من الصفحات السابقة.
+    return templates.TemplateResponse(
+        request=request,
+        name="inspections.html",
+        context=context,
+    )
+
+
+# =========================================================
+# INSPECTION DATA API / FILTERED RECORDS
+# =========================================================
+
+@app.get("/api/inspections")
+def inspections_api(request: Request):
+    user = require_login(request)
+
+    if not user:
+        raise HTTPException(status_code=401, detail="غير مصرح")
+
+    rows = get_filtered_inspections(
+        user,
+        region=request.query_params.get("region"),
+        wilaya=request.query_params.get("wilaya"),
+        date_from=request.query_params.get("date_from"),
+        date_to=request.query_params.get("date_to"),
+        has_violations=request.query_params.get("has_violations"),
+        previous_violations=request.query_params.get("previous_violations"),
+        reservations_lifted=request.query_params.get("reservations_lifted"),
+        violations_processed=request.query_params.get("violations_processed"),
+        search=request.query_params.get("search"),
+    )
+
+    return {
+        "count": len(rows),
+        "inspections": [dict(row) for row in rows],
+    }
+
+
+# =========================================================
+# INSPECTION SUMMARY
+# قاعدة الحصيلة الإضافية: المديرية الجهوية + الولائية + عدد التفتيشات
+# لا يظهر اسم المخبر في هذا المخرج التجميعي.
+# =========================================================
+
+@app.get("/api/inspections/summary")
+def inspections_summary_api(request: Request):
+    user = require_login(request)
+
+    if not user:
+        raise HTTPException(status_code=401, detail="غير مصرح")
+
+    region = request.query_params.get("region")
+    wilaya = request.query_params.get("wilaya")
+    date_from = request.query_params.get("date_from")
+    date_to = request.query_params.get("date_to")
+
+    if region and not region_allows(user, region):
+        raise HTTPException(status_code=403, detail="غير مصرح")
+
+    if wilaya and not wilaya_allows(user, wilaya):
+        raise HTTPException(status_code=403, detail="غير مصرح")
+
+    con = db()
+
+    query = """
+        SELECT
+            region,
+            wilaya,
+            COUNT(*) AS inspections_count,
+            SUM(CASE WHEN has_violations = 1 THEN 1 ELSE 0 END) AS inspections_with_violations,
+            SUM(CASE WHEN previous_violations = 1 THEN 1 ELSE 0 END) AS inspections_with_previous_violations,
+            SUM(CASE WHEN reservations_lifted = 1 THEN 1 ELSE 0 END) AS reservations_lifted_count,
+            SUM(CASE WHEN violations_processed = 1 THEN 1 ELSE 0 END) AS violations_processed_count
+        FROM inspections
+        WHERE 1=1
+    """
+    params = []
+
+    if user["role"] == "region":
+        query += " AND region = ?"
+        params.append(user["region"])
+    elif user["role"] == "wilaya":
+        query += " AND wilaya = ?"
+        params.append(user["wilaya"])
+
+    if region:
+        query += " AND region = ?"
+        params.append(region)
+
+    if wilaya:
+        query += " AND wilaya = ?"
+        params.append(wilaya)
+
+    if date_from:
+        query += " AND inspection_date >= ?"
+        params.append(date_from)
+
+    if date_to:
+        query += " AND inspection_date <= ?"
+        params.append(date_to)
+
+    query += """
+        GROUP BY region, wilaya
+        ORDER BY region, wilaya
+    """
+
+    rows = con.execute(query, params).fetchall()
+    con.close()
+
+    return {
+        "count": len(rows),
+        "summary": [dict(row) for row in rows],
+    }
+
+
+# =========================================================
+# INSPECTION EXCEL EXPORT
+# =========================================================
+
+@app.get("/admin/inspections/export")
+def export_inspections_excel(request: Request):
+    user = require_login(request)
+
+    if not user or user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="غير مصرح")
+
+    rows = get_filtered_inspections(
+        user,
+        region=request.query_params.get("region"),
+        wilaya=request.query_params.get("wilaya"),
+        date_from=request.query_params.get("date_from"),
+        date_to=request.query_params.get("date_to"),
+        has_violations=request.query_params.get("has_violations"),
+        previous_violations=request.query_params.get("previous_violations"),
+        reservations_lifted=request.query_params.get("reservations_lifted"),
+        violations_processed=request.query_params.get("violations_processed"),
+        search=request.query_params.get("search"),
+    )
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "حصائل التفتيش"
+    ws.sheet_view.rightToLeft = True
+    ws.append(INSPECTION_HEADERS)
+
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    fields = [
+        "region",
+        "wilaya",
+        "lab_name",
+        "inspection_date",
+        "has_violations",
+        "violations",
+        "previous_violations",
+        "previous_violations_status",
+        "reservations_lifted",
+        "violations_processed",
+        "notes",
+    ]
+
+    for row in rows:
+        ws.append([row[field] for field in fields])
+
+    for col in ws.columns:
+        max_len = max(len(str(cell.value or "")) for cell in col)
+        ws.column_dimensions[col[0].column_letter].width = min(
+            max(max_len + 3, 12),
+            45
+        )
+
+    path = BASE / "حصائل_عمليات_التفتيش.xlsx"
+    wb.save(path)
+
+    return FileResponse(
+        path,
+        filename="حصائل_عمليات_التفتيش.xlsx",
+        media_type=(
+            "application/vnd.openxmlformats-officedocument."
+            "spreadsheetml.sheet"
+        ),
+    )
