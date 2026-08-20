@@ -220,6 +220,7 @@ th{
     <div class="header">
         <div>
             <h1 class="title">حصائل عمليات التفتيش</h1>
+
             <div class="subtitle">
                 قاعدة حصائل التفتيش — المديرية الولائية / المديرية الجهوية / الإدارة المركزية
             </div>
@@ -232,25 +233,46 @@ th{
     </div>
 
     <div class="actions">
+
         {% if user.role == "wilaya" %}
-        <a class="button primary" href="#addInspection">إضافة حصيلة تفتيش</a>
+        <a class="button primary" href="#addInspection">
+            إضافة حصيلة تفتيش
+        </a>
         {% endif %}
 
-        <!-- التعديل الوحيد: التصدير متاح لجميع الصلاحيات -->
-        <a class="button secondary" id="exportButton" href="/inspections/export">
-            تصدير Excel
+        <a
+            class="button secondary"
+            id="exportSummaryButton"
+            href="/inspections/export/summary"
+        >
+            تصدير الحصيلة Excel
         </a>
 
-        <a class="button gray" href="{% if user.role == 'admin' %}/admin{% elif user.role == 'region' %}/region{% else %}/wilaya{% endif %}">
+        <a
+            class="button secondary"
+            id="exportDetailsButton"
+            href="/inspections/export/details"
+        >
+            تصدير تفاصيل المخالفات Excel
+        </a>
+
+        <a
+            class="button gray"
+            href="{% if user.role == 'admin' %}/admin{% elif user.role == 'region' %}/region{% else %}/wilaya{% endif %}"
+        >
             العودة
         </a>
 
-        <a class="button logout" href="/logout">تسجيل الخروج</a>
+        <a class="button logout" href="/logout">
+            تسجيل الخروج
+        </a>
+
     </div>
 </div>
 
 
 {% if user.role == "wilaya" %}
+
 <div class="card" id="addInspection">
 
     <h2>إدخال حصيلة عملية تفتيش</h2>
@@ -265,317 +287,836 @@ th{
 
             <div class="form-group">
                 <label>اسم المخبر</label>
-                <input type="text" name="lab_name" required>
+                <input
+                    type="text"
+                    name="lab_name"
+                    required
+                >
             </div>
 
             <div class="form-group">
                 <label>تاريخ التفتيش</label>
-                <input type="date" name="inspection_date" required>
+                <input
+                    type="date"
+                    name="inspection_date"
+                    required
+                >
             </div>
 
             <div class="form-group">
                 <label>هل توجد مخالفات؟</label>
+
                 <div class="radio-box">
-                    <label><input type="radio" name="has_violations" value="1"> نعم</label>
-                    <label><input type="radio" name="has_violations" value="0" checked> لا</label>
+                    <label>
+                        <input
+                            type="radio"
+                            name="has_violations"
+                            value="1"
+                        >
+                        نعم
+                    </label>
+
+                    <label>
+                        <input
+                            type="radio"
+                            name="has_violations"
+                            value="0"
+                            checked
+                        >
+                        لا
+                    </label>
                 </div>
             </div>
 
             <div class="form-group">
                 <label>هل توجد مخالفات سابقة؟</label>
+
                 <div class="radio-box">
-                    <label><input type="radio" name="previous_violations" value="1"> نعم</label>
-                    <label><input type="radio" name="previous_violations" value="0" checked> لا</label>
+                    <label>
+                        <input
+                            type="radio"
+                            name="previous_violations"
+                            value="1"
+                        >
+                        نعم
+                    </label>
+
+                    <label>
+                        <input
+                            type="radio"
+                            name="previous_violations"
+                            value="0"
+                            checked
+                        >
+                        لا
+                    </label>
                 </div>
             </div>
 
             <div class="form-group">
                 <label>هل تم رفع التحفظ؟</label>
+
                 <div class="radio-box">
-                    <label><input type="radio" name="reservations_lifted" value="1"> نعم</label>
-                    <label><input type="radio" name="reservations_lifted" value="0" checked> لا</label>
+                    <label>
+                        <input
+                            type="radio"
+                            name="reservations_lifted"
+                            value="1"
+                        >
+                        نعم
+                    </label>
+
+                    <label>
+                        <input
+                            type="radio"
+                            name="reservations_lifted"
+                            value="0"
+                            checked
+                        >
+                        لا
+                    </label>
                 </div>
             </div>
 
             <div class="form-group">
                 <label>هل تمت معالجة المخالفات؟</label>
+
                 <div class="radio-box">
-                    <label><input type="radio" name="violations_processed" value="1"> نعم</label>
-                    <label><input type="radio" name="violations_processed" value="0" checked> لا</label>
+                    <label>
+                        <input
+                            type="radio"
+                            name="violations_processed"
+                            value="1"
+                        >
+                        نعم
+                    </label>
+
+                    <label>
+                        <input
+                            type="radio"
+                            name="violations_processed"
+                            value="0"
+                            checked
+                        >
+                        لا
+                    </label>
                 </div>
             </div>
 
             <div class="form-group full">
                 <label>المخالفات المرصودة</label>
-                <textarea name="violations" placeholder="تسجيل المخالفات المرصودة عند وجودها"></textarea>
+
+                <textarea
+                    name="violations"
+                    placeholder="تسجيل المخالفات المرصودة عند وجودها"
+                ></textarea>
             </div>
 
             <div class="form-group full">
                 <label>وضعية المخالفات السابقة</label>
-                <textarea name="previous_violations_status" placeholder="ما تم رفعه أو معالجته وما بقي من تحفظات"></textarea>
+
+                <textarea
+                    name="previous_violations_status"
+                    placeholder="ما تم رفعه أو معالجته وما بقي من تحفظات"
+                ></textarea>
             </div>
 
             <div class="form-group full">
                 <label>ملاحظات</label>
+
                 <textarea name="notes"></textarea>
             </div>
 
         </div>
 
-        <button class="button primary" type="submit" style="margin-top:15px">
+        <button
+            class="button primary"
+            type="submit"
+            style="margin-top:15px"
+        >
             حفظ حصيلة التفتيش
         </button>
 
     </form>
+
 </div>
+
 {% endif %}
 
 
 <div class="card">
+
     <h2>فلاتر الحصائل</h2>
 
     <div class="filter-grid">
 
         <select id="regionFilter">
-            <option value="">كل المديريات الجهوية</option>
+            <option value="">
+                كل المديريات الجهوية
+            </option>
+
             {% for region in REGIONS %}
-            <option value="{{ region }}">{{ region }}</option>
+
+            <option value="{{ region }}">
+                {{ region }}
+            </option>
+
             {% endfor %}
         </select>
+
 
         <select id="wilayaFilter">
-            <option value="">كل المديريات الولائية</option>
+
+            <option value="">
+                كل المديريات الولائية
+            </option>
+
             {% for region, wilayas in REGIONS.items() %}
+
                 {% for wilaya in wilayas %}
-                <option value="{{ wilaya }}" data-region="{{ region }}">{{ wilaya }}</option>
+
+                <option
+                    value="{{ wilaya }}"
+                    data-region="{{ region }}"
+                >
+                    {{ wilaya }}
+                </option>
+
                 {% endfor %}
+
             {% endfor %}
+
         </select>
 
-        <input type="date" id="dateFrom" title="من تاريخ">
-        <input type="date" id="dateTo" title="إلى تاريخ">
+
+        <input
+            type="date"
+            id="dateFrom"
+            title="من تاريخ"
+        >
+
+        <input
+            type="date"
+            id="dateTo"
+            title="إلى تاريخ"
+        >
+
 
         <select id="violationsFilter">
-            <option value="">المخالفات: الكل</option>
-            <option value="1">توجد مخالفات</option>
-            <option value="0">لا توجد مخالفات</option>
+
+            <option value="">
+                المخالفات: الكل
+            </option>
+
+            <option value="1">
+                توجد مخالفات
+            </option>
+
+            <option value="0">
+                لا توجد مخالفات
+            </option>
+
         </select>
+
 
         <select id="previousFilter">
-            <option value="">مخالفات سابقة: الكل</option>
-            <option value="1">توجد مخالفات سابقة</option>
-            <option value="0">لا توجد مخالفات سابقة</option>
+
+            <option value="">
+                مخالفات سابقة: الكل
+            </option>
+
+            <option value="1">
+                توجد مخالفات سابقة
+            </option>
+
+            <option value="0">
+                لا توجد مخالفات سابقة
+            </option>
+
         </select>
+
 
         <select id="liftedFilter">
-            <option value="">رفع التحفظ: الكل</option>
-            <option value="1">تم رفع التحفظ</option>
-            <option value="0">لم يتم رفع التحفظ</option>
+
+            <option value="">
+                رفع التحفظ: الكل
+            </option>
+
+            <option value="1">
+                تم رفع التحفظ
+            </option>
+
+            <option value="0">
+                لم يتم رفع التحفظ
+            </option>
+
         </select>
+
 
         <select id="processedFilter">
-            <option value="">المعالجة: الكل</option>
-            <option value="1">تمت المعالجة</option>
-            <option value="0">لم تتم المعالجة</option>
+
+            <option value="">
+                المعالجة: الكل
+            </option>
+
+            <option value="1">
+                تمت المعالجة
+            </option>
+
+            <option value="0">
+                لم تتم المعالجة
+            </option>
+
         </select>
 
-        <input type="text" id="searchFilter" placeholder="بحث...">
 
-        <button class="button primary" type="button" onclick="loadData()">
+        <input
+            type="text"
+            id="searchFilter"
+            placeholder="بحث..."
+        >
+
+
+        <button
+            class="button primary"
+            type="button"
+            onclick="loadData()"
+        >
             تطبيق الفلاتر
         </button>
 
-        <button class="button gray" type="button" onclick="resetFilters()">
+
+        <button
+            class="button gray"
+            type="button"
+            onclick="resetFilters()"
+        >
             إعادة ضبط
         </button>
 
     </div>
+
 </div>
 
 
 <div class="card">
+
     <h2>الحصيلة التجميعية</h2>
 
-    <div class="summary-grid" id="summaryContainer">
-        <div class="stat">عدد التفتيشات<span class="number" id="totalInspections">0</span></div>
-        <div class="stat">تفتيشات بها مخالفات<span class="number" id="withViolations">0</span></div>
-        <div class="stat">تفتيشات بها مخالفات سابقة<span class="number" id="withPrevious">0</span></div>
-        <div class="stat">تم رفع التحفظ<span class="number" id="lifted">0</span></div>
-        <div class="stat">تمت المعالجة<span class="number" id="processed">0</span></div>
+    <div
+        class="summary-grid"
+        id="summaryContainer"
+    >
+
+        <div class="stat">
+            عدد التفتيشات
+            <span
+                class="number"
+                id="totalInspections"
+            >
+                0
+            </span>
+        </div>
+
+        <div class="stat">
+            تفتيشات بها مخالفات
+            <span
+                class="number"
+                id="withViolations"
+            >
+                0
+            </span>
+        </div>
+
+        <div class="stat">
+            تفتيشات بها مخالفات سابقة
+            <span
+                class="number"
+                id="withPrevious"
+            >
+                0
+            </span>
+        </div>
+
+        <div class="stat">
+            تم رفع التحفظ
+            <span
+                class="number"
+                id="lifted"
+            >
+                0
+            </span>
+        </div>
+
+        <div class="stat">
+            تمت المعالجة
+            <span
+                class="number"
+                id="processed"
+            >
+                0
+            </span>
+        </div>
+
     </div>
 
-    <div class="table-wrap" style="margin-top:20px">
+
+    <div
+        class="table-wrap"
+        style="margin-top:20px"
+    >
+
         <table>
+
             <thead>
+
                 <tr>
-                    <th>المديرية الجهوية</th>
-                    <th>المديرية الولائية</th>
-                    <th>عدد التفتيشات</th>
-                    <th>تفتيشات بها مخالفات</th>
-                    <th>تفتيشات بها مخالفات سابقة</th>
-                    <th>تم رفع التحفظ</th>
-                    <th>تمت المعالجة</th>
+
+                    <th>
+                        المديرية الجهوية
+                    </th>
+
+                    <th>
+                        المديرية الولائية
+                    </th>
+
+                    <th>
+                        عدد التفتيشات
+                    </th>
+
+                    <th>
+                        تفتيشات بها مخالفات
+                    </th>
+
+                    <th>
+                        تفتيشات بها مخالفات سابقة
+                    </th>
+
+                    <th>
+                        تم رفع التحفظ
+                    </th>
+
+                    <th>
+                        تمت المعالجة
+                    </th>
+
                 </tr>
+
             </thead>
+
             <tbody id="summaryBody">
-                <tr><td colspan="7" class="empty">جاري التحميل...</td></tr>
+
+                <tr>
+                    <td
+                        colspan="7"
+                        class="empty"
+                    >
+                        جاري التحميل...
+                    </td>
+                </tr>
+
             </tbody>
+
         </table>
+
     </div>
+
 </div>
 
 
 <div class="card">
+
     <h2>تفاصيل الحصائل</h2>
 
     <div class="table-wrap">
+
         <table>
+
             <thead>
+
                 <tr>
-                    <th>المديرية الجهوية</th>
-                    <th>المديرية الولائية</th>
-                    <th>اسم المخبر</th>
-                    <th>تاريخ التفتيش</th>
-                    <th>مخالفات</th>
-                    <th>المخالفات المرصودة</th>
-                    <th>مخالفات سابقة</th>
-                    <th>وضعية السابقة</th>
-                    <th>رفع التحفظ</th>
-                    <th>المعالجة</th>
-                    <th>ملاحظات</th>
+
+                    <th>
+                        المديرية الجهوية
+                    </th>
+
+                    <th>
+                        المديرية الولائية
+                    </th>
+
+                    <th>
+                        اسم المخبر
+                    </th>
+
+                    <th>
+                        تاريخ التفتيش
+                    </th>
+
+                    <th>
+                        مخالفات
+                    </th>
+
+                    <th>
+                        المخالفات المرصودة
+                    </th>
+
+                    <th>
+                        مخالفات سابقة
+                    </th>
+
+                    <th>
+                        وضعية السابقة
+                    </th>
+
+                    <th>
+                        رفع التحفظ
+                    </th>
+
+                    <th>
+                        المعالجة
+                    </th>
+
+                    <th>
+                        ملاحظات
+                    </th>
+
                 </tr>
+
             </thead>
+
             <tbody id="inspectionBody">
-                <tr><td colspan="11" class="empty">جاري التحميل...</td></tr>
+
+                <tr>
+                    <td
+                        colspan="11"
+                        class="empty"
+                    >
+                        جاري التحميل...
+                    </td>
+                </tr>
+
             </tbody>
+
         </table>
+
     </div>
+
 </div>
 
 </div>
 
 
 <script>
-const regionFilter = document.getElementById("regionFilter");
-const wilayaFilter = document.getElementById("wilayaFilter");
+
+const regionFilter =
+    document.getElementById("regionFilter");
+
+const wilayaFilter =
+    document.getElementById("wilayaFilter");
+
 
 function escapeHtml(value){
+
     return String(value ?? "")
         .replace(/&/g,"&amp;")
         .replace(/</g,"&lt;")
         .replace(/>/g,"&gt;")
         .replace(/"/g,"&quot;")
         .replace(/'/g,"&#039;");
+
 }
+
 
 function yesNo(value){
+
     return Number(value) === 1
+
         ? '<span class="status-yes">نعم</span>'
+
         : '<span class="status-no">لا</span>';
+
 }
 
+
 function updateWilayas(){
-    const region = regionFilter.value;
+
+    const region =
+        regionFilter.value;
 
     [...wilayaFilter.options].forEach(option => {
-        if(!option.value) return;
-        option.hidden = region && option.dataset.region !== region;
+
+        if(!option.value)
+            return;
+
+        option.hidden =
+            region &&
+            option.dataset.region !== region;
+
     });
+
 
     if(
         wilayaFilter.value &&
         region &&
         wilayaFilter.selectedOptions[0].dataset.region !== region
     ){
+
         wilayaFilter.value = "";
+
     }
+
 }
 
-regionFilter.addEventListener("change", updateWilayas);
+
+regionFilter.addEventListener(
+    "change",
+    updateWilayas
+);
+
 
 function queryString(){
-    const params = new URLSearchParams();
+
+    const params =
+        new URLSearchParams();
+
 
     const values = {
-        region: regionFilter.value,
-        wilaya: wilayaFilter.value,
-        date_from: document.getElementById("dateFrom").value,
-        date_to: document.getElementById("dateTo").value,
-        has_violations: document.getElementById("violationsFilter").value,
-        previous_violations: document.getElementById("previousFilter").value,
-        reservations_lifted: document.getElementById("liftedFilter").value,
-        violations_processed: document.getElementById("processedFilter").value,
-        search: document.getElementById("searchFilter").value
+
+        region:
+            regionFilter.value,
+
+        wilaya:
+            wilayaFilter.value,
+
+        date_from:
+            document.getElementById(
+                "dateFrom"
+            ).value,
+
+        date_to:
+            document.getElementById(
+                "dateTo"
+            ).value,
+
+        has_violations:
+            document.getElementById(
+                "violationsFilter"
+            ).value,
+
+        previous_violations:
+            document.getElementById(
+                "previousFilter"
+            ).value,
+
+        reservations_lifted:
+            document.getElementById(
+                "liftedFilter"
+            ).value,
+
+        violations_processed:
+            document.getElementById(
+                "processedFilter"
+            ).value,
+
+        search:
+            document.getElementById(
+                "searchFilter"
+            ).value
+
     };
 
-    Object.entries(values).forEach(([key,value]) => {
-        if(value) params.set(key,value);
-    });
+
+    Object.entries(values).forEach(
+        ([key,value]) => {
+
+            if(value)
+                params.set(key,value);
+
+        }
+    );
+
 
     return params;
+
 }
+
 
 async function loadData(){
-    const qs = queryString();
 
-    const response = await fetch("/api/inspections?" + qs.toString());
+    const qs =
+        queryString();
+
+
+    const response =
+        await fetch(
+            "/api/inspections?" +
+            qs.toString()
+        );
+
 
     if(!response.ok){
-        document.getElementById("inspectionBody").innerHTML =
+
+        document.getElementById(
+            "inspectionBody"
+        ).innerHTML =
             '<tr><td colspan="11" class="empty">تعذر تحميل البيانات</td></tr>';
+
         return;
+
     }
 
-    const data = await response.json();
 
-    document.getElementById("recordCount").textContent = data.count;
+    const data =
+        await response.json();
 
-    const body = document.getElementById("inspectionBody");
+
+    document.getElementById(
+        "recordCount"
+    ).textContent =
+        data.count;
+
+
+    const body =
+        document.getElementById(
+            "inspectionBody"
+        );
+
 
     if(!data.inspections.length){
+
         body.innerHTML =
             '<tr><td colspan="11" class="empty">لا توجد نتائج</td></tr>';
+
     }else{
-        body.innerHTML = data.inspections.map(row => `
+
+        body.innerHTML =
+            data.inspections.map(
+                row => `
+
             <tr>
-                <td>${escapeHtml(row.region)}</td>
-                <td>${escapeHtml(row.wilaya)}</td>
-                <td>${escapeHtml(row.lab_name)}</td>
-                <td>${escapeHtml(row.inspection_date)}</td>
-                <td>${yesNo(row.has_violations)}</td>
-                <td>${escapeHtml(row.violations)}</td>
-                <td>${yesNo(row.previous_violations)}</td>
-                <td>${escapeHtml(row.previous_violations_status)}</td>
-                <td>${yesNo(row.reservations_lifted)}</td>
-                <td>${yesNo(row.violations_processed)}</td>
-                <td>${escapeHtml(row.notes)}</td>
+
+                <td>
+                    ${escapeHtml(row.region)}
+                </td>
+
+                <td>
+                    ${escapeHtml(row.wilaya)}
+                </td>
+
+                <td>
+                    ${escapeHtml(row.lab_name)}
+                </td>
+
+                <td>
+                    ${escapeHtml(row.inspection_date)}
+                </td>
+
+                <td>
+                    ${yesNo(row.has_violations)}
+                </td>
+
+                <td>
+                    ${escapeHtml(row.violations)}
+                </td>
+
+                <td>
+                    ${yesNo(row.previous_violations)}
+                </td>
+
+                <td>
+                    ${escapeHtml(
+                        row.previous_violations_status
+                    )}
+                </td>
+
+                <td>
+                    ${yesNo(
+                        row.reservations_lifted
+                    )}
+                </td>
+
+                <td>
+                    ${yesNo(
+                        row.violations_processed
+                    )}
+                </td>
+
+                <td>
+                    ${escapeHtml(row.notes)}
+                </td>
+
             </tr>
-        `).join("");
+
+        `
+            ).join("");
+
     }
 
+
     await loadSummary();
+
     updateExportLink();
+
 }
 
-async function loadSummary(){
-    const qs = new URLSearchParams();
 
-    ["region","wilaya","date_from","date_to"].forEach(key => {
+async function loadSummary(){
+
+    const qs =
+        new URLSearchParams();
+
+
+    [
+        "region",
+        "wilaya",
+        "date_from",
+        "date_to"
+    ].forEach(key => {
+
         const map = {
-            region: regionFilter.value,
-            wilaya: wilayaFilter.value,
-            date_from: document.getElementById("dateFrom").value,
-            date_to: document.getElementById("dateTo").value
+
+            region:
+                regionFilter.value,
+
+            wilaya:
+                wilayaFilter.value,
+
+            date_from:
+                document.getElementById(
+                    "dateFrom"
+                ).value,
+
+            date_to:
+                document.getElementById(
+                    "dateTo"
+                ).value
+
         };
 
-        if(map[key]) qs.set(key,map[key]);
+
+        if(map[key])
+            qs.set(
+                key,
+                map[key]
+            );
+
     });
 
-    const response = await fetch("/api/inspections/summary?" + qs.toString());
 
-    if(!response.ok) return;
+    const response =
+        await fetch(
+            "/api/inspections/summary?" +
+            qs.toString()
+        );
 
-    const data = await response.json();
+
+    if(!response.ok)
+        return;
+
+
+    const data =
+        await response.json();
+
 
     let total = 0;
     let violations = 0;
@@ -583,65 +1124,258 @@ async function loadSummary(){
     let lifted = 0;
     let processed = 0;
 
-    const body = document.getElementById("summaryBody");
+
+    const body =
+        document.getElementById(
+            "summaryBody"
+        );
+
 
     if(!data.summary.length){
+
         body.innerHTML =
             '<tr><td colspan="7" class="empty">لا توجد نتائج</td></tr>';
-    }else{
-        body.innerHTML = data.summary.map(row => {
-            total += Number(row.inspections_count || 0);
-            violations += Number(row.inspections_with_violations || 0);
-            previous += Number(row.inspections_with_previous_violations || 0);
-            lifted += Number(row.reservations_lifted_count || 0);
-            processed += Number(row.violations_processed_count || 0);
 
-            return `
-                <tr>
-                    <td>${escapeHtml(row.region)}</td>
-                    <td>${escapeHtml(row.wilaya)}</td>
-                    <td>${row.inspections_count || 0}</td>
-                    <td>${row.inspections_with_violations || 0}</td>
-                    <td>${row.inspections_with_previous_violations || 0}</td>
-                    <td>${row.reservations_lifted_count || 0}</td>
-                    <td>${row.violations_processed_count || 0}</td>
-                </tr>
-            `;
-        }).join("");
+    }else{
+
+        body.innerHTML =
+            data.summary.map(
+                row => {
+
+                    total +=
+                        Number(
+                            row.inspections_count || 0
+                        );
+
+                    violations +=
+                        Number(
+                            row.inspections_with_violations || 0
+                        );
+
+                    previous +=
+                        Number(
+                            row.inspections_with_previous_violations || 0
+                        );
+
+                    lifted +=
+                        Number(
+                            row.reservations_lifted_count || 0
+                        );
+
+                    processed +=
+                        Number(
+                            row.violations_processed_count || 0
+                        );
+
+
+                    return `
+
+                        <tr>
+
+                            <td>
+                                ${escapeHtml(row.region)}
+                            </td>
+
+                            <td>
+                                ${escapeHtml(row.wilaya)}
+                            </td>
+
+                            <td>
+                                ${row.inspections_count || 0}
+                            </td>
+
+                            <td>
+                                ${row.inspections_with_violations || 0}
+                            </td>
+
+                            <td>
+                                ${row.inspections_with_previous_violations || 0}
+                            </td>
+
+                            <td>
+                                ${row.reservations_lifted_count || 0}
+                            </td>
+
+                            <td>
+                                ${row.violations_processed_count || 0}
+                            </td>
+
+                        </tr>
+
+                    `;
+
+                }
+            ).join("");
+
     }
 
-    document.getElementById("totalInspections").textContent = total;
-    document.getElementById("withViolations").textContent = violations;
-    document.getElementById("withPrevious").textContent = previous;
-    document.getElementById("lifted").textContent = lifted;
-    document.getElementById("processed").textContent = processed;
+
+    document.getElementById(
+        "totalInspections"
+    ).textContent =
+        total;
+
+
+    document.getElementById(
+        "withViolations"
+    ).textContent =
+        violations;
+
+
+    document.getElementById(
+        "withPrevious"
+    ).textContent =
+        previous;
+
+
+    document.getElementById(
+        "lifted"
+    ).textContent =
+        lifted;
+
+
+    document.getElementById(
+        "processed"
+    ).textContent =
+        processed;
+
 }
+
 
 function updateExportLink(){
-    const link = document.getElementById("exportButton");
-    if(!link) return;
 
-    link.href = "/inspections/export?" +
-        queryString().toString();
+    const summaryLink =
+        document.getElementById(
+            "exportSummaryButton"
+        );
+
+    const detailsLink =
+        document.getElementById(
+            "exportDetailsButton"
+        );
+
+
+    /*
+     * تصدير جدول الحصيلة
+     *
+     * يعتمد على:
+     * - المديرية الجهوية
+     * - المديرية الولائية
+     * - الفترة الزمنية
+     */
+
+    if(summaryLink){
+
+        const summaryParams =
+            new URLSearchParams();
+
+
+        const summaryValues = {
+
+            region:
+                regionFilter.value,
+
+            wilaya:
+                wilayaFilter.value,
+
+            date_from:
+                document.getElementById(
+                    "dateFrom"
+                ).value,
+
+            date_to:
+                document.getElementById(
+                    "dateTo"
+                ).value
+
+        };
+
+
+        Object.entries(
+            summaryValues
+        ).forEach(
+            ([key,value]) => {
+
+                if(value)
+                    summaryParams.set(
+                        key,
+                        value
+                    );
+
+            }
+        );
+
+
+        summaryLink.href =
+            "/inspections/export/summary?" +
+            summaryParams.toString();
+
+    }
+
+
+    /*
+     * تصدير جدول تفاصيل المخالفات
+     *
+     * يستخدم جميع الفلاتر الحالية
+     */
+
+    if(detailsLink){
+
+        detailsLink.href =
+            "/inspections/export/details?" +
+            queryString().toString();
+
+    }
+
 }
+
 
 function resetFilters(){
+
     regionFilter.value = "";
+
     wilayaFilter.value = "";
-    document.getElementById("dateFrom").value = "";
-    document.getElementById("dateTo").value = "";
-    document.getElementById("violationsFilter").value = "";
-    document.getElementById("previousFilter").value = "";
-    document.getElementById("liftedFilter").value = "";
-    document.getElementById("processedFilter").value = "";
-    document.getElementById("searchFilter").value = "";
+
+    document.getElementById(
+        "dateFrom"
+    ).value = "";
+
+    document.getElementById(
+        "dateTo"
+    ).value = "";
+
+    document.getElementById(
+        "violationsFilter"
+    ).value = "";
+
+    document.getElementById(
+        "previousFilter"
+    ).value = "";
+
+    document.getElementById(
+        "liftedFilter"
+    ).value = "";
+
+    document.getElementById(
+        "processedFilter"
+    ).value = "";
+
+    document.getElementById(
+        "searchFilter"
+    ).value = "";
+
 
     updateWilayas();
+
     loadData();
+
 }
 
+
 updateWilayas();
+
 loadData();
+
 </script>
 
 </body>
